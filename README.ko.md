@@ -1,12 +1,14 @@
 <p align="center">
   <h1 align="center">security-framework-mcp</h1>
   <p align="center">
-    <strong>OWASP + NIST 통합 보안 프레임워크 MCP 서버</strong>
+    <strong>NIST + OWASP 통합 보안 프레임워크 MCP 서버</strong>
   </p>
   <p align="center">
     <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
     <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python 3.11+"></a>
     <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-compatible-green.svg" alt="MCP Compatible"></a>
+    <a href="https://nist.gov"><img src="https://img.shields.io/badge/NIST-data%20source-orange.svg" alt="NIST"></a>
+    <a href="https://owasp.org"><img src="https://img.shields.io/badge/OWASP-data%20source-orange.svg" alt="OWASP"></a>
   </p>
   <p align="center">
     <a href="./README.md">English</a>
@@ -15,7 +17,7 @@
 
 ---
 
-**3,439개 보안 데이터**를 단일 MCP 인터페이스로 검색 — **OWASP** (Top 10, API/LLM/MCP Top 10, ASVS 5.0, WSTG, MASVS, Proactive Controls, 113+ Cheat Sheets, 418+ 프로젝트)와 **NIST** (SP 800-53 1,196개 컨트롤 + 53A 평가 + 53B 기준선, CSF 2.0, PF 1.0, SP 800-37 RMF, 613개 출판물, CMVP, NICE) — **실시간 NVD/CVE**, 컴플라이언스 매핑, STRIDE 위협 모델링, MCP 보안 평가 포함.
+**3,439개 보안 데이터**를 단일 MCP 인터페이스로 검색 — **NIST** (SP 800-53 1,196개 컨트롤 + 53A 평가 + 53B 기준선, CSF 2.0, PF 1.0, SP 800-37 RMF, 613개 출판물, CSF↔800-53 매핑, CMVP, NICE, 용어사전, 동의어)와 **OWASP** (Top 10, API/LLM/MCP Top 10, ASVS 5.0, WSTG, MASVS, Proactive Controls, 113+ Cheat Sheets, 418+ 프로젝트) — **실시간 NVD/CVE + CISA KEV**, PDF 읽기, 컴플라이언스 매핑, STRIDE 위협 모델링, MCP 보안 평가 포함.
 
 ## 빠른 시작
 
@@ -37,7 +39,22 @@ Claude Desktop (`claude_desktop_config.json`):
 
 첫 실행 시 로컬 데이터베이스가 자동으로 생성됩니다 (~15-20초). 이후 주 1회 자동 갱신.
 
-## 데이터 소스 (19개 로컬 + 1개 실시간)
+## 데이터 소스 (21개 로컬 + 2개 실시간)
+
+### NIST (10개)
+
+| 소스 | 레코드 | 설명 |
+|------|--------|------|
+| **SP 800-53 Rev. 5** | 1,196 | 보안/프라이버시 컨트롤 + **53A 평가 목표/방법** + **53B 기준선(LOW/MODERATE/HIGH)** |
+| **CSF 2.0** | 225 | 사이버보안 프레임워크 (6개 기능, 22개 카테고리, 197개 서브카테고리) |
+| **PF 1.0** | 92 | 프라이버시 프레임워크 (5개 기능) |
+| **SP 800-37 RMF** | 7 | 위험 관리 프레임워크 (7단계 프로세스) |
+| **출판물** | 613 | NIST 사이버보안 전체 출판물 (SP 800, FIPS, IR, CSWP) |
+| **CSF ↔ 800-53 매핑** | 57 | 프레임워크 교차 참조 |
+| **용어사전** | 39 | 사이버보안 핵심 용어 |
+| **동의어** | 53 | 보안 약어 확장 (MFA↔multi-factor authentication 등) |
+| **CMVP** | 15 | FIPS 140 인증 암호 모듈 |
+| **NICE** | 43 | 사이버보안 인력 프레임워크 직무 역할 |
 
 ### OWASP (11개)
 
@@ -55,22 +72,30 @@ Claude Desktop (`claude_desktop_config.json`):
 | **CWE 데이터베이스** | 39 | 주요 CWE + OWASP 교차 참조 |
 | **Cheat Sheets** | 113+ | 보안 구현 가이드 (온디맨드) |
 
-### NIST (8개)
+### 실시간 API
 
-| 소스 | 레코드 | 설명 |
-|------|--------|------|
-| **SP 800-53 Rev. 5** | 1,196 | 보안/프라이버시 컨트롤 + **53A 평가 목표/방법** + **53B 기준선(LOW/MODERATE/HIGH)** |
-| **CSF 2.0** | 225 | 사이버보안 프레임워크 (6개 기능, 22개 카테고리, 197개 서브카테고리) |
-| **PF 1.0** | 92 | 프라이버시 프레임워크 (5개 기능) |
-| **SP 800-37 RMF** | 7 | 위험 관리 프레임워크 (7단계 프로세스) |
-| **출판물** | 613 | NIST 사이버보안 전체 출판물 (SP 800, FIPS, IR, CSWP) |
-| **용어사전** | 39 | 사이버보안 핵심 용어 |
-| **CMVP** | 15 | FIPS 140 인증 암호 모듈 |
-| **NICE** | 43 | 사이버보안 인력 프레임워크 직무 역할 |
+| 소스 | 설명 |
+|------|------|
+| NVD CVE API 2.0 | 실시간 CVE 검색 |
+| CISA KEV | 실제 악용된 취약점 카탈로그 |
 
-### 실시간: NVD CVE API 2.0
+## 도구 (36개)
 
-## 도구 (33개)
+### NIST 도구
+
+| 도구 | 설명 |
+|------|------|
+| `search_nist` | 10개 NIST 소스 통합 검색 |
+| `get_nist_control` | SP 800-53 컨트롤 조회 — 문장, 가이드, **53A 평가**, **53B 기준선** 필터 (LOW/MODERATE/HIGH), 패밀리 필터 |
+| `get_nist_csf` | CSF 2.0 기능/카테고리/서브카테고리 |
+| `get_nist_pf` | PF 1.0 |
+| `get_nist_rmf` | SP 800-37 RMF 단계별 태스크 |
+| `get_nist_publication` | 613개 출판물 검색/조회 |
+| `read_publication` | NIST 출판물 PDF 다운로드 + Markdown 변환 |
+| `get_nist_mapping` | CSF 2.0 ↔ SP 800-53 프레임워크 교차 매핑 |
+| `get_nist_glossary` | 사이버보안 용어 정의 |
+| `get_nist_cmvp` | FIPS 140 인증 모듈 |
+| `get_nice_roles` | NICE 직무 역할 |
 
 ### OWASP 도구
 
@@ -89,25 +114,12 @@ Claude Desktop (`claude_desktop_config.json`):
 | `get_masvs` | MASVS 모바일 보안 통제 |
 | `get_cheatsheet` | 113+ Cheat Sheets |
 
-### NIST 도구
-
-| 도구 | 설명 |
-|------|------|
-| `search_nist` | 8개 NIST 소스 통합 검색 |
-| `get_nist_control` | SP 800-53 컨트롤 조회 — 문장, 가이드, **53A 평가**, **53B 기준선** 필터 (LOW/MODERATE/HIGH), 패밀리 필터 |
-| `get_nist_csf` | CSF 2.0 기능/카테고리/서브카테고리 |
-| `get_nist_pf` | PF 1.0 |
-| `get_nist_rmf` | SP 800-37 RMF 단계별 태스크 |
-| `get_nist_publication` | 613개 출판물 검색/조회 |
-| `get_nist_glossary` | 사이버보안 용어 정의 |
-| `get_nist_cmvp` | FIPS 140 인증 모듈 |
-| `get_nice_roles` | NICE 직무 역할 |
-
 ### 취약점 & CWE
 
 | 도구 | 설명 |
 |------|------|
 | `get_cwe` | CWE 조회 + OWASP 자동 교차 참조 |
+| `search_kev` | CISA KEV (실제 악용된 취약점) 카탈로그 조회 |
 | `search_cve` | 실시간 NVD CVE 검색 |
 | `get_cve_detail` | CVE 상세 정보 (CVSS, 약점, 참조) |
 

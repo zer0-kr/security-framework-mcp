@@ -1,14 +1,14 @@
 <p align="center">
   <h1 align="center">security-framework-mcp</h1>
   <p align="center">
-    <strong>Unified OWASP + NIST security framework MCP server</strong>
+    <strong>Unified NIST + OWASP security framework MCP server</strong>
   </p>
   <p align="center">
     <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
     <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python 3.11+"></a>
     <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-compatible-green.svg" alt="MCP Compatible"></a>
-    <a href="https://owasp.org"><img src="https://img.shields.io/badge/OWASP-data%20source-orange.svg" alt="OWASP"></a>
     <a href="https://nist.gov"><img src="https://img.shields.io/badge/NIST-data%20source-orange.svg" alt="NIST"></a>
+    <a href="https://owasp.org"><img src="https://img.shields.io/badge/OWASP-data%20source-orange.svg" alt="OWASP"></a>
   </p>
   <p align="center">
     <a href="./README.ko.md">한국어</a>
@@ -17,7 +17,7 @@
 
 ---
 
-Search and query **3,439 security data points** through a single MCP interface — **OWASP** (Top 10, API/LLM/MCP Top 10, ASVS 5.0, WSTG, MASVS, Proactive Controls, 113+ Cheat Sheets, 418+ projects) and **NIST** (1,196 SP 800-53 controls with SP 800-53A assessments and SP 800-53B baselines, CSF 2.0, Privacy Framework 1.0, SP 800-37 RMF, 613 publications, CMVP, NICE) — with **live NVD/CVE**, compliance mapping, STRIDE threat modeling, and MCP security assessment.
+Search and query **3,439 security data points** through a single MCP interface — **NIST** (1,196 SP 800-53 controls with 53A assessments and 53B baselines, CSF 2.0, PF 1.0, SP 800-37 RMF, 613 publications, CMVP, NICE, glossary, CSF↔800-53 mappings) and **OWASP** (Top 10, API/LLM/MCP Top 10, ASVS 5.0, WSTG, MASVS, Proactive Controls, 113+ Cheat Sheets, 418+ projects) — with **live NVD/CVE + CISA KEV**, PDF reading, compliance mapping, STRIDE threat modeling, and MCP security assessment.
 
 ## Quick Start
 
@@ -46,7 +46,22 @@ Claude Desktop (`claude_desktop_config.json`):
 
 </details>
 
-## Data Sources (19 local + 1 live)
+## Data Sources (21 local + 2 live)
+
+### NIST (10)
+
+| Source | Records |
+|--------|---------|
+| SP 800-53 Rev. 5 Controls (+ 53A assessments + 53B baselines) | 1,196 |
+| CSF 2.0 | 225 |
+| PF 1.0 | 92 |
+| SP 800-37 RMF | 7 steps |
+| Publications (SP 800, FIPS, IR, CSWP) | 613 |
+| CSF ↔ 800-53 Mappings | 57 |
+| Glossary | 39 |
+| Synonyms | 53 |
+| CMVP (FIPS 140) | 15 |
+| NICE Work Roles | 43 |
 
 ### OWASP (11)
 
@@ -61,22 +76,30 @@ Claude Desktop (`claude_desktop_config.json`):
 | CWE Database | 39 |
 | Cheat Sheets | 113+ |
 
-### NIST (8)
+### Live APIs
 
-| Source | Records |
-|--------|---------|
-| SP 800-53 Rev. 5 Controls (+ 53A assessments + 53B baselines) | 1,196 |
-| CSF 2.0 | 225 |
-| PF 1.0 | 92 |
-| SP 800-37 RMF | 7 steps |
-| Publications (SP 800, FIPS, IR, CSWP) | 613 |
-| Glossary | 39 |
-| CMVP (FIPS 140) | 15 |
-| NICE Work Roles | 43 |
+| Source | Description |
+|--------|-------------|
+| NVD CVE API 2.0 | Real-time CVE search |
+| CISA KEV | Known Exploited Vulnerabilities catalog |
 
-### Live: NVD CVE API 2.0
+## Tools (36)
 
-## Tools (33)
+### NIST
+
+| Tool | Description |
+|------|-------------|
+| `search_nist` | Search all 10 NIST sources |
+| `get_nist_control` | SP 800-53 control — statement, guidance, **53A assessment**, **53B baseline** filter (LOW/MODERATE/HIGH), family filter |
+| `get_nist_csf` | CSF 2.0 functions/categories/subcategories |
+| `get_nist_pf` | PF 1.0 |
+| `get_nist_rmf` | SP 800-37 RMF steps, tasks, key documents |
+| `get_nist_publication` | 613 publications (SP 800, FIPS, IR, CSWP) |
+| `read_publication` | Download + convert NIST PDFs to Markdown |
+| `get_nist_mapping` | CSF 2.0 ↔ SP 800-53 bidirectional mappings |
+| `get_nist_glossary` | Cybersecurity terms |
+| `get_nist_cmvp` | FIPS 140 validated modules |
+| `get_nice_roles` | NICE workforce roles |
 
 ### OWASP
 
@@ -95,20 +118,6 @@ Claude Desktop (`claude_desktop_config.json`):
 | `get_masvs` | MASVS mobile security |
 | `get_cheatsheet` | 113+ Cheat Sheets |
 
-### NIST
-
-| Tool | Description |
-|------|-------------|
-| `search_nist` | Search all 8 NIST sources |
-| `get_nist_control` | SP 800-53 control — statement, guidance, **53A assessment**, **53B baseline** filter (LOW/MODERATE/HIGH), family filter |
-| `get_nist_csf` | CSF 2.0 functions/categories/subcategories |
-| `get_nist_pf` | Privacy Framework 1.0 |
-| `get_nist_rmf` | SP 800-37 RMF steps, tasks, key documents |
-| `get_nist_publication` | 613 publications (SP 800, FIPS, IR, CSWP) |
-| `get_nist_glossary` | Cybersecurity terms |
-| `get_nist_cmvp` | FIPS 140 validated modules |
-| `get_nice_roles` | NICE workforce roles |
-
 ### Vulnerability & CWE
 
 | Tool | Description |
@@ -116,12 +125,13 @@ Claude Desktop (`claude_desktop_config.json`):
 | `get_cwe` | CWE lookup + auto OWASP cross-references |
 | `search_cve` | Live NVD search |
 | `get_cve_detail` | Full CVE details |
+| `search_kev` | CISA Known Exploited Vulnerabilities |
 
 ### Analysis & Assessment
 
 | Tool | Description |
 |------|-------------|
-| `search_owasp` | Search all 19 sources (OWASP + NIST unified) |
+| `search_owasp` | Search all 21 sources (NIST + OWASP unified) |
 | `cross_reference` | CWE → Top 10 / ASVS / WSTG |
 | `compliance_map` | ASVS → PCI-DSS 4.0 / ISO 27001:2022 / NIST 800-53 |
 | `assess_stack` | Tech stack security assessment |
@@ -161,14 +171,14 @@ Claude Desktop (`claude_desktop_config.json`):
 │  36 tools · 4 prompts · 6 rsrc │
 ├──────────────┬──────────────────┤
 │  SQLite FTS5 │  Live APIs       │
-│  (~6.2MB)    │  NVD CVE 2.0    │
+│  (~6.2MB)    │  NVD + CISA KEV │
 ├──────────────┴──────────────────┤
+│  NIST Collectors (10)           │
 │  OWASP Collectors (11)          │
-│  NIST Collectors (8)            │
 └──────────────┬──────────────────┘
                │ httpx (retry)
 ┌──────────────▼──────────────────┐
-│  OWASP GitHub · NIST OSCAL/CSRC │
+│  NIST OSCAL/CSRC · OWASP GitHub │
 └─────────────────────────────────┘
 ```
 
