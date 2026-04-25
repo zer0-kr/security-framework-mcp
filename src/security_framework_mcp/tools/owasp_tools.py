@@ -44,6 +44,9 @@ _SOURCE_TABLES: dict[str, str] = {
     "masvs": "masvs",
     "mcp_top10": "mcp_top10",
     "cwes": "cwes",
+    "nist_controls": "nist_controls",
+    "nist_csf": "nist_csf",
+    "nist_glossary": "nist_glossary",
 }
 
 _SOURCE_LABELS: dict[str, str] = {
@@ -58,6 +61,9 @@ _SOURCE_LABELS: dict[str, str] = {
     "masvs": "MASVS",
     "mcp_top10": "MCP Top 10 2025",
     "cwes": "CWE Database",
+    "nist_controls": "NIST SP 800-53",
+    "nist_csf": "NIST CSF 2.0",
+    "nist_glossary": "NIST Glossary",
 }
 
 
@@ -118,6 +124,9 @@ _FORMATTERS = {
     "masvs": _fmt_masvs,
     "mcp_top10": _fmt_mcp_top10,
     "cwes": _fmt_cwe,
+    "nist_controls": lambda row: f"**{row.get('id', '?')}** {row.get('title', '')} [{row.get('baselines', '')}]",
+    "nist_csf": lambda row: f"**{row.get('id', '?')}** [{row.get('level', '')}] {row.get('title', '')}",
+    "nist_glossary": lambda row: f"**{row.get('term', '?')}** — {row.get('definition', '')[:150]}",
 }
 
 
@@ -762,6 +771,194 @@ def register_tools(mcp: "FastMCP", index_mgr: "IndexManager", nvd_client: "NVDCl
     ) -> str:
         """Generate a security testing checklist based on project type and depth level."""
         db_path = await index_mgr.ensure_index()
+        limit_map = {"basic": 8, "standard": 15, "comprehensive": 30}
+        per_section = limit_map[level]
+        sections: list[str] = []
+        item_count = 0
+
+        if project_type in ("web", "full"):
+            items = [f"- [ ] **{t['id']}** {t['name']}" for t in TOP10_2021[:per_section]]
+            item_count += len(items)
+            sections.append("### Web Application — Top 10 2021\n" + "\n".join(items))
+            wstg_items = []
+            for cat in ["WSTG-INFO", "WSTG-CONF", "WSTG-IDNT", "WSTG-ATHN", "WSTG-ATHZ", "WSTG-SESS", "WSTG-INPV", "WSTG-CLNT"][:per_section]:
+                results, _ = db.get_all(db_path, "wstg", filters={"category_id": cat}, limit=3)
+                for r in results:
+                    wstg_items.append(f"- [ ] **{r['test_id']}** {r['name']}")
+                    item_count += 1
+            if wstg_items:
+                sections.append("### Web — Testing (WSTG)\n" + "\n".join(wstg_items[:per_section]))
+
+        if project_type in ("api", "full"):
+            items = [f"- [ ] **{a['id']}** {a['name']}" for a in API_TOP10_2023[:per_section]]
+            item_count += len(items)
+            sections.append("### API Security — Top 10 2023\n" + "\n".join(items))
+
+        if project_type in ("mobile", "full"):
+            from security_framework_mcp.collectors.masvs import MASVS_DATA
+            items = []
+            for _, _, controls in MASVS_DATA:
+                for ctrl_id, statement, _ in controls[:2 if level == "basic" else 99]:
+                    items.append(f"- [ ] **{ctrl_id}** {statement}")
+                    item_count += 1
+            sections.append("### Mobile Security — MASVS\n" + "\n".join(items[:per_section]))
+
+        if project_type in ("llm", "full"):
+            items = [f"- [ ] **{l['id']}** {l['name']}" for l in LLM_TOP10_2025[:per_section]]
+            item_count += len(items)
+            sections.append("### AI/LLM Security — Top 10 2025\n" + "\n".join(items))
+
+        asvs_level = "1" if level == "basic" else "2" if level == "standard" else "3"
+        results, _ = db.get_all(db_path, "asvs", filters={"level": asvs_level}, limit=per_section)
+        asvs_items = [f"- [ ] **{r['req_id']}** {r['req_description'][:120]}" for r in results]
+        item_count += len(asvs_items)
+        if asvs_items:
+            sections.append(f"### Verification — ASVS Level {asvs_level}\n" + "\n".join(asvs_items))
+
+        pc_items = [f"- [ ] **{pc['id']}** {pc['name']}" for pc in PROACTIVE_CONTROLS_2024[:per_section]]
+        item_count += len(pc_items)
+        sections.append("### Defensive Controls — Proactive Controls 2024\n" + "\n".join(pc_items))
+
+        return f"## Security Checklist: {project_type.upper()} ({level})\n\n_{item_count} items_\n" + "\n\n".join(sections)
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
+    async def search_nist(
+        query: Annotated[str, Field(description="Search keywords", max_length=500)],
+        source: Annotated[
+            Literal["controls", "csf", "glossary", "all"] | None,
+            Field(description="Filter: controls (SP 800-53), csf (CSF 2.0), glossary, or all"),
+        ] = "all",
+        limit: Annotated[int, Field(ge=1, le=50)] = 10,
+    ) -> str:
+        """Search NIST data: SP 800-53 controls, CSF 2.0, and glossary."""
+        db_path = await index_mgr.ensure_index()
+
+        source_map = {
+            "controls": ("nist_controls", "NIST SP 800-53"),
+            "csf": ("nist_csf", "NIST CSF 2.0"),
+            "glossary": ("nist_glossary", "NIST Glossary"),
+        }
+        sources = list(source_map.items()) if source == "all" else [(source, source_map[source])]
+
+        sections: list[str] = []
+        shown = 0
+        for src_key, (table, label) in sources:
+            try:
+                rows, total = db.search_fts(db_path, table, query, limit=min(5, limit) if source == "all" else limit)
+            except Exception:
+                continue
+            if not rows:
+                continue
+            shown += len(rows)
+            fmt = _FORMATTERS.get(table, lambda r: str(r))
+            lines = [f"### {label} ({total} total)"]
+            lines.extend(f"- {fmt(row)}" for row in rows)
+            sections.append("\n".join(lines))
+
+        if not sections:
+            return f"No NIST results found for '{query}'."
+        return f"## NIST Search: {query}\n\n_Showing {shown} results_\n\n" + "\n\n".join(sections)
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
+    async def get_nist_control(
+        control_id: Annotated[str, Field(description="Control ID, e.g. 'ac-1', 'AC-2(1)'", max_length=30)],
+    ) -> str:
+        """Get a specific NIST SP 800-53 Rev. 5 security control by ID."""
+        db_path = await index_mgr.ensure_index()
+
+        normalized = control_id.strip().lower().replace(" ", "")
+        record = db.get_by_id(db_path, "nist_controls", "id", normalized)
+        if record is None:
+            return f"Control '{control_id}' not found. Try search_nist to find the correct ID."
+
+        lines = [
+            f"# {record['id'].upper()} — {record['title']}",
+            f"\n**Family:** {record.get('family_name', '?')} ({record.get('family_id', '').upper()})",
+        ]
+        if record.get("baselines"):
+            lines.append(f"**Baselines:** {record['baselines']}")
+        if record.get("is_withdrawn"):
+            lines.append("**Status:** WITHDRAWN")
+        if record.get("statement"):
+            lines.append(f"\n## Statement\n{record['statement'][:3000]}")
+        if record.get("guidance"):
+            lines.append(f"\n## Supplemental Guidance\n{record['guidance'][:3000]}")
+        return "\n".join(lines)
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
+    async def get_nist_csf(
+        function_id: Annotated[
+            str | None,
+            Field(description="CSF Function: GV, ID, PR, DE, RS, RC. Omit for all."),
+        ] = None,
+        level: Annotated[
+            Literal["function", "category", "subcategory", "all"] | None,
+            Field(description="Filter by hierarchy level"),
+        ] = "all",
+        query: Annotated[str | None, Field(description="Search keywords", max_length=500)] = None,
+        limit: Annotated[int, Field(ge=1, le=100)] = 30,
+    ) -> str:
+        """Get NIST Cybersecurity Framework (CSF) 2.0 functions, categories, and subcategories."""
+        db_path = await index_mgr.ensure_index()
+
+        if query:
+            filters: dict[str, Any] = {}
+            if function_id:
+                filters["function_id"] = function_id.upper()
+            if level and level != "all":
+                filters["level"] = level
+            try:
+                results, total = db.search_fts(db_path, "nist_csf", query, filters=filters, limit=limit)
+            except Exception as exc:
+                raise ToolError(f"CSF search failed: {exc}") from exc
+        else:
+            filters = {}
+            if function_id:
+                filters["function_id"] = function_id.upper()
+            if level and level != "all":
+                filters["level"] = level
+            results, total = db.get_all(db_path, "nist_csf", filters=filters, limit=limit)
+
+        if not results:
+            return "No CSF entries found matching your criteria."
+
+        lines = [f"## NIST CSF 2.0 ({total} total)\n"]
+        for row in results:
+            lvl = row.get("level", "")
+            indent = "  " if lvl == "category" else "    " if lvl == "subcategory" else ""
+            lines.append(f"{indent}- **{row.get('id', '?')}** [{lvl}] {row.get('title', '')}")
+
+        return "\n".join(lines)
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
+    async def get_nist_glossary(
+        term: Annotated[str | None, Field(description="Term to look up. Omit to list all.", max_length=200)] = None,
+    ) -> str:
+        """Look up NIST cybersecurity terms and definitions."""
+        db_path = await index_mgr.ensure_index()
+
+        if term is None:
+            results, total = db.get_all(db_path, "nist_glossary", limit=100)
+            lines = [f"## NIST Glossary ({total} terms)\n"]
+            for row in results:
+                lines.append(f"- **{row['term']}** ({row.get('source', '')})")
+            return "\n".join(lines)
+
+        record = db.get_by_id(db_path, "nist_glossary", "term", term)
+        if record is None:
+            try:
+                results, _ = db.search_fts(db_path, "nist_glossary", term, limit=5)
+                if results:
+                    lines = [f"## NIST Glossary: \"{term}\"\n"]
+                    for row in results:
+                        lines.append(f"### {row['term']}\n{row['definition']}\n_Source: {row.get('source', 'N/A')}_\n")
+                    return "\n".join(lines)
+            except Exception:
+                pass
+            return f"Term '{term}' not found. Use get_nist_glossary() to list all terms."
+
+        return f"# {record['term']}\n\n{record['definition']}\n\n_Source: {record.get('source', 'N/A')}_"
+
 
         limit_map = {"basic": 8, "standard": 15, "comprehensive": 30}
         per_section = limit_map[level]

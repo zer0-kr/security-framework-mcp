@@ -144,6 +144,21 @@ class IndexManager:
             FTS_SQL as MCP_TOP10_FTS,
             scrape_mcp_top10,
         )
+        from security_framework_mcp.collectors.nist_controls import (
+            CREATE_TABLE_SQL as NIST_CTRL_SQL,
+            FTS_SQL as NIST_CTRL_FTS,
+            scrape_nist_controls,
+        )
+        from security_framework_mcp.collectors.nist_csf import (
+            CREATE_TABLE_SQL as NIST_CSF_SQL,
+            FTS_SQL as NIST_CSF_FTS,
+            scrape_nist_csf,
+        )
+        from security_framework_mcp.collectors.nist_glossary import (
+            CREATE_TABLE_SQL as NIST_GLOSS_SQL,
+            FTS_SQL as NIST_GLOSS_FTS,
+            scrape_nist_glossary,
+        )
 
         output_dir = str(self._config.data_dir)
         os.makedirs(output_dir, exist_ok=True)
@@ -155,7 +170,7 @@ class IndexManager:
 
         _META_SQL = "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);"
 
-        log.info("Building OWASP database from sources ...")
+        log.info("Building security framework database from sources ...")
 
         try:
             conn = sqlite3.connect(tmp_path)
@@ -164,13 +179,15 @@ class IndexManager:
 
             for sql in [
                 PROJECTS_SQL, ASVS_SQL, WSTG_SQL, TOP10_SQL, CHEATSHEETS_SQL,
-                API_TOP10_SQL, LLM_TOP10_SQL, PROACTIVE_SQL, MASVS_SQL, CWE_SQL, MCP_TOP10_SQL, _META_SQL,
+                API_TOP10_SQL, LLM_TOP10_SQL, PROACTIVE_SQL, MASVS_SQL, CWE_SQL, MCP_TOP10_SQL,
+                NIST_CTRL_SQL, NIST_CSF_SQL, NIST_GLOSS_SQL, _META_SQL,
             ]:
                 conn.executescript(sql)
 
             for fts_sql in [
                 PROJECTS_FTS, ASVS_FTS, WSTG_FTS, TOP10_FTS, CHEATSHEETS_FTS,
                 API_TOP10_FTS, LLM_TOP10_FTS, PROACTIVE_FTS, MASVS_FTS, CWE_FTS, MCP_TOP10_FTS,
+                NIST_CTRL_FTS, NIST_CSF_FTS, NIST_GLOSS_FTS,
             ]:
                 conn.executescript(fts_sql)
 
@@ -186,6 +203,9 @@ class IndexManager:
                 ("masvs", scrape_masvs),
                 ("cwes", scrape_cwes),
                 ("mcp_top10", scrape_mcp_top10),
+                ("nist_controls", scrape_nist_controls),
+                ("nist_csf", scrape_nist_csf),
+                ("nist_glossary", scrape_nist_glossary),
             ]
 
             results: dict[str, int] = {}
@@ -200,6 +220,7 @@ class IndexManager:
             for fts in [
                 "projects_fts", "asvs_fts", "wstg_fts", "top10_fts", "cheatsheets_fts",
                 "api_top10_fts", "llm_top10_fts", "proactive_controls_fts", "masvs_fts", "cwes_fts", "mcp_top10_fts",
+                "nist_controls_fts", "nist_csf_fts", "nist_glossary_fts",
             ]:
                 try:
                     conn.execute(f"INSERT INTO {fts}({fts}) VALUES('rebuild')")
