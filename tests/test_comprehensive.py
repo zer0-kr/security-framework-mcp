@@ -65,13 +65,15 @@ async def run_all():
 
         tools = await client.list_tools()
         tool_names = {t.name for t in tools}
-        ok("TC01 tool_count", len(tools) == 11, f"got {len(tools)}")
+        ok("TC01 tool_count", len(tools) == 16, f"got {len(tools)}")
 
         expected_tools = {
             "list_projects", "search_projects", "get_project",
             "search_owasp", "get_top10", "get_asvs", "get_wstg",
             "get_cheatsheet", "cross_reference",
             "update_database", "database_status",
+            "get_api_top10", "get_llm_top10", "get_proactive_controls",
+            "get_masvs", "assess_stack",
         }
         ok("TC02 all_tools_present", expected_tools == tool_names,
            f"missing={expected_tools - tool_names}, extra={tool_names - expected_tools}")

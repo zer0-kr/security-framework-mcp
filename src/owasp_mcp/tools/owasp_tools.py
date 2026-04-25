@@ -10,6 +10,9 @@ from pydantic import Field
 from owasp_mcp import db
 from owasp_mcp.collectors.cheatsheets import fetch_cheatsheet_content
 from owasp_mcp.collectors.top10 import TOP10_2021
+from owasp_mcp.collectors.api_top10 import API_TOP10_2023
+from owasp_mcp.collectors.llm_top10 import LLM_TOP10_2025
+from owasp_mcp.collectors.proactive_controls import PROACTIVE_CONTROLS_2024
 
 if TYPE_CHECKING:
     from fastmcp import FastMCP
@@ -34,6 +37,10 @@ _SOURCE_TABLES: dict[str, str] = {
     "wstg": "wstg",
     "top10": "top10",
     "cheatsheets": "cheatsheets",
+    "api_top10": "api_top10",
+    "llm_top10": "llm_top10",
+    "proactive_controls": "proactive_controls",
+    "masvs": "masvs",
 }
 
 _SOURCE_LABELS: dict[str, str] = {
@@ -42,6 +49,10 @@ _SOURCE_LABELS: dict[str, str] = {
     "wstg": "WSTG",
     "top10": "Top 10 2021",
     "cheatsheets": "Cheat Sheets",
+    "api_top10": "API Security Top 10 2023",
+    "llm_top10": "LLM Top 10 2025",
+    "proactive_controls": "Proactive Controls 2024",
+    "masvs": "MASVS",
 }
 
 
@@ -66,12 +77,32 @@ def _fmt_cheatsheet(row: dict[str, Any]) -> str:
     return f"**{row.get('name', '?')}**"
 
 
+def _fmt_api_top10(row: dict[str, Any]) -> str:
+    return f"**{row.get('id', '?')}** {row.get('name', '')} — {row.get('description', '')[:150]}"
+
+
+def _fmt_llm_top10(row: dict[str, Any]) -> str:
+    return f"**{row.get('id', '?')}** {row.get('name', '')} — {row.get('description', '')[:150]}"
+
+
+def _fmt_proactive(row: dict[str, Any]) -> str:
+    return f"**{row.get('id', '?')}** {row.get('name', '')} — {row.get('description', '')[:150]}"
+
+
+def _fmt_masvs(row: dict[str, Any]) -> str:
+    return f"**{row.get('control_id', '?')}** [{row.get('category_name', '')}] — {row.get('statement', '')}"
+
+
 _FORMATTERS = {
     "projects": _fmt_project,
     "asvs": _fmt_asvs,
     "wstg": _fmt_wstg,
     "top10": _fmt_top10,
     "cheatsheets": _fmt_cheatsheet,
+    "api_top10": _fmt_api_top10,
+    "llm_top10": _fmt_llm_top10,
+    "proactive_controls": _fmt_proactive,
+    "masvs": _fmt_masvs,
 }
 
 
@@ -495,3 +526,208 @@ def register_tools(mcp: "FastMCP", index_mgr: "IndexManager") -> None:
             return f"{header}\n\nNo cross-references found."
 
         return f"{header}\n\n" + "\n\n".join(sections)
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
+    async def get_api_top10(
+        id: Annotated[
+            str | None,
+            Field(description="API Security Top 10 item ID, e.g. 'API1:2023'. Omit to list all."),
+        ] = None,
+    ) -> str:
+        """Get OWASP API Security Top 10 2023 items with CWE mappings."""
+        if id is None:
+            lines = ["## OWASP API Security Top 10 — 2023\n"]
+            for item in API_TOP10_2023:
+                lines.append(f"- **{item['id']}** — {item['name']}")
+            return "\n".join(lines)
+
+        id_upper = id.strip().upper()
+        item = next((i for i in API_TOP10_2023 if i["id"] == id_upper), None)
+        if item is None:
+            return f"API Top 10 item '{id}' not found. Valid IDs: API1:2023 through API10:2023."
+
+        return "\n".join([
+            f"# {item['id']} — {item['name']}",
+            "",
+            f"**URL:** {item['url']}",
+            "",
+            "## Description",
+            item["description"],
+            "",
+            "## Associated CWEs",
+            item["cwes"],
+        ])
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
+    async def get_llm_top10(
+        id: Annotated[
+            str | None,
+            Field(description="LLM Top 10 item ID, e.g. 'LLM01:2025'. Omit to list all."),
+        ] = None,
+    ) -> str:
+        """Get OWASP Top 10 for LLM Applications 2025 items with CWE mappings."""
+        if id is None:
+            lines = ["## OWASP Top 10 for LLM Applications — 2025\n"]
+            for item in LLM_TOP10_2025:
+                lines.append(f"- **{item['id']}** — {item['name']}")
+            return "\n".join(lines)
+
+        id_upper = id.strip().upper()
+        item = next((i for i in LLM_TOP10_2025 if i["id"] == id_upper), None)
+        if item is None:
+            return f"LLM Top 10 item '{id}' not found. Valid IDs: LLM01:2025 through LLM10:2025."
+
+        return "\n".join([
+            f"# {item['id']} — {item['name']}",
+            "",
+            f"**URL:** {item['url']}",
+            "",
+            "## Description",
+            item["description"],
+            "",
+            "## Associated CWEs",
+            item["cwes"],
+        ])
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
+    async def get_proactive_controls(
+        id: Annotated[
+            str | None,
+            Field(description="Control ID, e.g. 'C1'. Omit to list all."),
+        ] = None,
+    ) -> str:
+        """Get OWASP Proactive Controls 2024 — defensive measures developers should implement."""
+        if id is None:
+            lines = ["## OWASP Proactive Controls — 2024\n"]
+            for item in PROACTIVE_CONTROLS_2024:
+                lines.append(f"- **{item['id']}** — {item['name']}")
+            return "\n".join(lines)
+
+        id_upper = id.strip().upper()
+        item = next((i for i in PROACTIVE_CONTROLS_2024 if i["id"] == id_upper), None)
+        if item is None:
+            return f"Proactive Control '{id}' not found. Valid IDs: C1 through C10."
+
+        return "\n".join([
+            f"# {item['id']} — {item['name']}",
+            "",
+            "## Description",
+            item["description"],
+            "",
+            "## Related Top 10 / CWEs",
+            item["related_top10"],
+        ])
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
+    async def get_masvs(
+        category: Annotated[
+            str | None,
+            Field(description="Category ID, e.g. 'MASVS-STORAGE'. Omit for all."),
+        ] = None,
+        query: Annotated[
+            str | None,
+            Field(description="Search keywords within MASVS controls", max_length=500),
+        ] = None,
+        limit: Annotated[int, Field(ge=1, le=100)] = 30,
+    ) -> str:
+        """Get OWASP MASVS (Mobile Application Security Verification Standard) controls."""
+        db_path = await index_mgr.ensure_index()
+
+        if query:
+            filters: dict[str, Any] = {}
+            if category:
+                filters["category_id"] = category.upper()
+            try:
+                results, total = db.search_fts(
+                    db_path, "masvs", query, filters=filters, limit=limit
+                )
+            except Exception as exc:
+                raise ToolError(f"MASVS search failed: {exc}") from exc
+        else:
+            filters = {}
+            if category:
+                filters["category_id"] = category.upper()
+            results, total = db.get_all(db_path, "masvs", filters=filters, limit=limit)
+
+        if not results:
+            return "No MASVS controls found matching your criteria."
+
+        lines = [f"## MASVS Controls ({total} total)\n"]
+        for row in results:
+            lines.append(f"- {_fmt_masvs(row)}")
+            if row.get("description"):
+                lines.append(f"  _{row['description'][:200]}_")
+
+        return "\n".join(lines)
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
+    async def assess_stack(
+        stack: Annotated[str, Field(description="Technology stack description, e.g. 'React, Node.js, PostgreSQL, REST API'", max_length=1000)],
+    ) -> str:
+        """Given a technology stack, recommend relevant OWASP security guidelines, cheat sheets, and test cases."""
+        db_path = await index_mgr.ensure_index()
+
+        _STACK_KEYWORDS: dict[str, list[str]] = {
+            "api": ["API", "REST", "GraphQL", "gRPC", "endpoint", "microservice"],
+            "web": ["React", "Angular", "Vue", "Next", "frontend", "HTML", "JavaScript", "TypeScript", "browser", "web", "SPA"],
+            "mobile": ["iOS", "Android", "React Native", "Flutter", "Swift", "Kotlin", "mobile"],
+            "database": ["SQL", "PostgreSQL", "MySQL", "MongoDB", "Redis", "database", "NoSQL", "SQLite"],
+            "auth": ["auth", "OAuth", "JWT", "SAML", "SSO", "login", "session", "token", "OIDC"],
+            "cloud": ["AWS", "Azure", "GCP", "Docker", "Kubernetes", "Lambda", "serverless", "cloud"],
+            "llm": ["LLM", "AI", "GPT", "Claude", "ML", "machine learning", "RAG", "embedding", "agent"],
+            "crypto": ["encryption", "TLS", "SSL", "certificate", "crypto", "hash"],
+        }
+
+        stack_lower = stack.lower()
+        matched_domains: set[str] = set()
+        for domain, keywords in _STACK_KEYWORDS.items():
+            if any(kw.lower() in stack_lower for kw in keywords):
+                matched_domains.add(domain)
+
+        if not matched_domains:
+            matched_domains = {"web"}
+
+        sections: list[str] = []
+
+        if "api" in matched_domains:
+            sections.append("### API Security\n- Review: **OWASP API Security Top 10 2023** (`get_api_top10`)\n- Key risks: Broken Object Level Authorization, Broken Authentication, Unrestricted Resource Consumption")
+
+        if "web" in matched_domains:
+            sections.append("### Web Security\n- Review: **OWASP Top 10 2021** (`get_top10`)\n- Test with: **WSTG** (`get_wstg`) — especially WSTG-INPV (Input Validation) and WSTG-CLNT (Client-side)\n- Apply: **Proactive Control C8** — Leverage Browser Security Features")
+
+        if "mobile" in matched_domains:
+            sections.append("### Mobile Security\n- Verify: **OWASP MASVS** (`get_masvs`) — all 8 categories\n- Key areas: MASVS-STORAGE, MASVS-CRYPTO, MASVS-NETWORK, MASVS-AUTH")
+
+        if "llm" in matched_domains:
+            sections.append("### AI/LLM Security\n- Review: **OWASP LLM Top 10 2025** (`get_llm_top10`)\n- Key risks: Prompt Injection, Sensitive Information Disclosure, Excessive Agency\n- Apply: Proactive Controls for input validation and output handling")
+
+        if "database" in matched_domains:
+            sections.append("### Database Security\n- Review: **ASVS V1** — Encoding and Sanitization (`get_asvs chapter=V1`)\n- Cheat Sheets: SQL Injection Prevention, Query Parameterization (`get_cheatsheet`)\n- Test: **WSTG-INPV-05** — SQL Injection testing")
+
+        if "auth" in matched_domains:
+            sections.append("### Authentication & Authorization\n- Verify: **ASVS V7** — Session Management, **ASVS V3** — Identity Verification\n- Apply: **Proactive Control C1** (Access Control), **C7** (Secure Digital Identities)\n- Cheat Sheets: Authentication, Session Management, Password Storage")
+
+        if "cloud" in matched_domains:
+            sections.append("### Cloud & Infrastructure\n- Apply: **Proactive Control C5** — Secure By Default Configurations\n- Cheat Sheets: Docker Security, Kubernetes Security\n- Test: **WSTG-CONF** — Configuration and Deployment Management")
+
+        if "crypto" in matched_domains:
+            sections.append("### Cryptography\n- Apply: **Proactive Control C2** — Use Cryptography to Protect Data\n- Verify: **ASVS V6** — Stored Cryptography\n- Cheat Sheets: Cryptographic Storage, Transport Layer Security")
+
+        try:
+            search_terms = [t.strip() for t in stack.split(",")][:3]
+            for term in search_terms:
+                term = term.strip()
+                if len(term) < 2:
+                    continue
+                cs_results, _ = db.search_fts(db_path, "cheatsheets", term, limit=3)
+                if cs_results:
+                    names = [r.get("name", "") for r in cs_results]
+                    sections.append(f"### Related Cheat Sheets for \"{term}\"\n" + "\n".join(f"- {n}" for n in names))
+        except Exception:
+            pass
+
+        header = f"## Security Assessment: {stack}\n"
+        if not sections:
+            return f"{header}\nNo specific recommendations found. Use `search_owasp` to explore."
+
+        return header + "\n\n".join(sections)

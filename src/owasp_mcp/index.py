@@ -114,6 +114,26 @@ class IndexManager:
             FTS_SQL as CHEATSHEETS_FTS,
             scrape_cheatsheets,
         )
+        from owasp_mcp.collectors.api_top10 import (
+            CREATE_TABLE_SQL as API_TOP10_SQL,
+            FTS_SQL as API_TOP10_FTS,
+            scrape_api_top10,
+        )
+        from owasp_mcp.collectors.llm_top10 import (
+            CREATE_TABLE_SQL as LLM_TOP10_SQL,
+            FTS_SQL as LLM_TOP10_FTS,
+            scrape_llm_top10,
+        )
+        from owasp_mcp.collectors.proactive_controls import (
+            CREATE_TABLE_SQL as PROACTIVE_SQL,
+            FTS_SQL as PROACTIVE_FTS,
+            scrape_proactive_controls,
+        )
+        from owasp_mcp.collectors.masvs import (
+            CREATE_TABLE_SQL as MASVS_SQL,
+            FTS_SQL as MASVS_FTS,
+            scrape_masvs,
+        )
 
         output_dir = str(self._config.data_dir)
         os.makedirs(output_dir, exist_ok=True)
@@ -132,10 +152,16 @@ class IndexManager:
             conn.execute("PRAGMA journal_mode=WAL")
             conn.execute("PRAGMA synchronous=NORMAL")
 
-            for sql in [PROJECTS_SQL, ASVS_SQL, WSTG_SQL, TOP10_SQL, CHEATSHEETS_SQL, _META_SQL]:
+            for sql in [
+                PROJECTS_SQL, ASVS_SQL, WSTG_SQL, TOP10_SQL, CHEATSHEETS_SQL,
+                API_TOP10_SQL, LLM_TOP10_SQL, PROACTIVE_SQL, MASVS_SQL, _META_SQL,
+            ]:
                 conn.executescript(sql)
 
-            for fts_sql in [PROJECTS_FTS, ASVS_FTS, WSTG_FTS, TOP10_FTS, CHEATSHEETS_FTS]:
+            for fts_sql in [
+                PROJECTS_FTS, ASVS_FTS, WSTG_FTS, TOP10_FTS, CHEATSHEETS_FTS,
+                API_TOP10_FTS, LLM_TOP10_FTS, PROACTIVE_FTS, MASVS_FTS,
+            ]:
                 conn.executescript(fts_sql)
 
             scrapers = [
@@ -144,6 +170,10 @@ class IndexManager:
                 ("wstg", scrape_wstg),
                 ("top10", scrape_top10),
                 ("cheatsheets", scrape_cheatsheets),
+                ("api_top10", scrape_api_top10),
+                ("llm_top10", scrape_llm_top10),
+                ("proactive_controls", scrape_proactive_controls),
+                ("masvs", scrape_masvs),
             ]
 
             results: dict[str, int] = {}
@@ -155,7 +185,10 @@ class IndexManager:
                     log.exception("  FAILED: %s", name)
                     results[name] = 0
 
-            for fts in ["projects_fts", "asvs_fts", "wstg_fts", "top10_fts", "cheatsheets_fts"]:
+            for fts in [
+                "projects_fts", "asvs_fts", "wstg_fts", "top10_fts", "cheatsheets_fts",
+                "api_top10_fts", "llm_top10_fts", "proactive_controls_fts", "masvs_fts",
+            ]:
                 try:
                     conn.execute(f"INSERT INTO {fts}({fts}) VALUES('rebuild')")
                 except Exception:

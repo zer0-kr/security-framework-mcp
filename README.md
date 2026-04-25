@@ -13,7 +13,7 @@
 
 ---
 
-Search and query **418+ OWASP projects** across all maturity levels, **345 ASVS requirements**, **111 WSTG test cases**, **113+ Cheat Sheets**, and the **Top 10 2021** with CWE cross-references — all through a single MCP interface.
+Search and query **418+ OWASP projects** across all maturity levels, **345 ASVS requirements**, **111 WSTG test cases**, **113+ Cheat Sheets**, **Top 10 2021**, **API Security Top 10 2023**, **LLM Top 10 2025**, **Proactive Controls 2024**, and **MASVS** — all through a single MCP interface with intelligent stack-based security assessment.
 
 ## Why owasp-mcp?
 
@@ -100,6 +100,10 @@ docker run --rm -i ghcr.io/zer0-kr/owasp-mcp
 | **ASVS 5.0** | 345 | [OWASP/ASVS](https://github.com/OWASP/ASVS) |
 | **WSTG** | 111 | [OWASP/wstg](https://github.com/OWASP/wstg) |
 | **Top 10 2021** | 10 | [OWASP/Top10](https://github.com/OWASP/Top10) |
+| **API Security Top 10 2023** | 10 | [OWASP API Security](https://owasp.org/API-Security/) |
+| **LLM Top 10 2025** | 10 | [OWASP GenAI](https://genai.owasp.org/llm-top-10/) |
+| **Proactive Controls 2024** | 10 | [OWASP Proactive Controls](https://owasp.org/www-project-proactive-controls/) |
+| **MASVS** | 23 | [OWASP/owasp-masvs](https://github.com/OWASP/owasp-masvs) |
 | **Cheat Sheets** | 113+ | [OWASP/CheatSheetSeries](https://github.com/OWASP/CheatSheetSeries) |
 
 Project levels: **Flagship** (15) · **Production** (12+) · **Lab** (36) · **Incubator** (206+) · Retired
@@ -120,15 +124,20 @@ Project levels: **Flagship** (15) · **Production** (12+) · **Lab** (36) · **I
 |------|-------------|
 | `get_asvs` | Query ASVS 5.0 requirements. Filter by `chapter` (V1-V14), `level` (1/2/3), or `query` keyword |
 | `get_wstg` | Query WSTG test cases. Filter by `category` (WSTG-INFO, WSTG-INPV, etc.) or `query` keyword |
-| `get_top10` | Get Top 10 2021 items with descriptions and CWE mappings. Pass `id` (e.g., A03:2021) or omit to list all |
+| `get_top10` | Get Top 10 2021 items with descriptions and CWE mappings |
+| `get_api_top10` | Get API Security Top 10 2023 items with CWE mappings |
+| `get_llm_top10` | Get LLM Top 10 2025 items — AI/LLM-specific security risks |
+| `get_proactive_controls` | Get Proactive Controls 2024 — defensive measures for developers |
+| `get_masvs` | Query MASVS mobile security controls. Filter by `category` or `query` |
 | `get_cheatsheet` | Read a cheat sheet by `name` or list all 113+ available sheets |
 
-### Cross-Referencing
+### Cross-Referencing & Assessment
 
 | Tool | Description |
 |------|-------------|
-| `search_owasp` | Search across **all** data sources at once (projects + ASVS + WSTG + Top 10 + Cheat Sheets) |
-| `cross_reference` | Map a `cwe` ID (e.g., CWE-79) to Top 10 categories, ASVS requirements, and WSTG tests. Or pass `top10_id` to see all associated CWEs |
+| `search_owasp` | Search across **all** data sources at once — 9 sources unified |
+| `cross_reference` | Map a `cwe` ID (e.g., CWE-79) to Top 10 categories, ASVS requirements, and WSTG tests |
+| `assess_stack` | Input a tech stack (e.g., "React, Node.js, PostgreSQL") and get tailored security recommendations |
 
 ### Database Management
 
@@ -152,9 +161,17 @@ Project levels: **Flagship** (15) · **Production** (12+) · **Lab** (36) · **I
 
 > Get the OWASP Top 10 item for A03:2021
 
-> Show me the Input Validation cheat sheet
+> What are the API Security Top 10 risks?
 
-> Search all OWASP data for "session management"
+> Show me the LLM Top 10 for prompt injection
+
+> What MASVS controls apply to cryptography?
+
+> Assess the security of my stack: React, Node.js, PostgreSQL, REST API
+
+> What Proactive Controls should I implement for access control?
+
+> Show me the Input Validation cheat sheet
 ```
 
 ## Configuration
@@ -174,14 +191,15 @@ Project levels: **Flagship** (15) · **Production** (12+) · **Lab** (36) · **I
                │ stdio
 ┌──────────────▼──────────────────┐
 │         owasp-mcp server        │
-│  FastMCP · 11 tools · 1 resource│
+│  FastMCP · 16 tools · 1 resource│
 ├─────────────────────────────────┤
 │         SQLite + FTS5           │
-│  Full-text search index (~675KB)│
+│  Full-text search index (~835KB)│
 ├─────────────────────────────────┤
 │         Collectors              │
 │  projects · asvs · wstg · top10 │
-│  cheatsheets                    │
+│  api_top10 · llm_top10 · masvs │
+│  proactive_controls · cheatsht │
 └──────────────┬──────────────────┘
                │ httpx (on build)
 ┌──────────────▼──────────────────┐
@@ -217,6 +235,10 @@ src/owasp_mcp/
 │   ├── asvs.py            # ASVS 5.0 flat JSON
 │   ├── wstg.py            # WSTG checklist JSON
 │   ├── top10.py           # Top 10 2021 + CWE mappings
+│   ├── api_top10.py       # API Security Top 10 2023
+│   ├── llm_top10.py       # LLM Top 10 2025
+│   ├── proactive_controls.py  # Proactive Controls 2024
+│   ├── masvs.py           # MASVS mobile security
 │   └── cheatsheets.py     # Cheat Sheet index + on-demand content
 └── tools/
     └── owasp_tools.py     # All MCP tool definitions

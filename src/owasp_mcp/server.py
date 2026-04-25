@@ -14,11 +14,14 @@ mcp = FastMCP(
     name="owasp-mcp",
     instructions=(
         "OWASP MCP server providing unified access to all OWASP projects, "
-        "standards, and security guidelines. Use search_owasp for cross-source "
-        "search, list_projects/search_projects/get_project for the 418+ project "
-        "catalog (Flagship/Production/Lab/Incubator), get_top10 for Top 10 2021, "
-        "get_asvs for ASVS 5.0, get_wstg for Web Security Testing Guide, "
-        "get_cheatsheet for Cheat Sheets, and cross_reference for CWE mappings."
+        "standards, and security guidelines. Tools: search_owasp (cross-source), "
+        "list_projects/search_projects/get_project (418+ projects), "
+        "get_top10 (Top 10 2021), get_api_top10 (API Security 2023), "
+        "get_llm_top10 (LLM Top 10 2025), get_asvs (ASVS 5.0), "
+        "get_wstg (WSTG), get_masvs (Mobile MASVS), "
+        "get_proactive_controls (defensive controls), "
+        "get_cheatsheet (113+ sheets), cross_reference (CWE mapping), "
+        "assess_stack (tech stack security assessment)."
     ),
 )
 
