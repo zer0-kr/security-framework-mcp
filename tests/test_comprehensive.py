@@ -67,7 +67,7 @@ async def run_all():
 
         tools = await client.list_tools()
         tool_names = {t.name for t in tools}
-        ok("TC01 tool_count", len(tools) == 17, f"got {len(tools)}")
+        ok("TC01 tool_count", len(tools) == 19, f"got {len(tools)}")
 
         expected_tools = {
             "list_projects", "search_projects", "get_project",
@@ -76,6 +76,7 @@ async def run_all():
             "update_database", "database_status",
             "get_api_top10", "get_llm_top10", "get_proactive_controls",
             "get_masvs", "assess_stack", "generate_checklist",
+            "get_cwe", "compliance_map",
         }
         ok("TC02 all_tools_present", expected_tools == tool_names,
            f"missing={expected_tools - tool_names}, extra={tool_names - expected_tools}")
@@ -614,6 +615,46 @@ async def run_all():
         ok("TC170 has_api_top10", "owasp://api-top10/2023" in resource_uris)
         ok("TC171 has_llm_top10", "owasp://llm-top10/2025" in resource_uris)
         ok("TC172 has_proactive", "owasp://proactive-controls/2024" in resource_uris)
+
+        print("\n=== GROUP 25: get_cwe ===")
+
+        txt = await call(client, "get_cwe", {"id": "CWE-79"})
+        ok("TC173 cwe79_name", "Cross-site Scripting" in txt)
+        ok("TC174 cwe79_top10_map", "A03:2021" in txt)
+        ok("TC175 cwe79_url", "cwe.mitre.org" in txt)
+
+        txt = await call(client, "get_cwe", {"id": "89"})
+        ok("TC176 cwe_no_prefix", "SQL Injection" in txt)
+
+        txt = await call(client, "get_cwe", {"id": "CWE-918"})
+        ok("TC177 cwe918_ssrf", "SSRF" in txt)
+        ok("TC178 cwe918_top10", "A10:2021" in txt)
+
+        txt = await call(client, "get_cwe", {"id": "CWE-285"})
+        ok("TC179 cwe285_api_map", "API" in txt, txt[:300])
+
+        txt = await call(client, "get_cwe", {"id": "CWE-94"})
+        ok("TC180 cwe94_llm_map", "LLM" in txt, txt[:300])
+
+        txt = await call(client, "get_cwe", {"id": "CWE-99999"})
+        ok("TC181 cwe_not_found", "not found" in txt.lower())
+
+        print("\n=== GROUP 26: compliance_map ===")
+
+        txt = await call(client, "compliance_map", {"framework": "all", "asvs_chapter": "V4"})
+        ok("TC182 cm_all_v4", "PCI-DSS" in txt and "ISO" in txt and "NIST" in txt)
+
+        txt = await call(client, "compliance_map", {"framework": "pci-dss"})
+        ok("TC183 cm_pci_all", "PCI-DSS" in txt and "V1" in txt)
+
+        txt = await call(client, "compliance_map", {"framework": "iso27001", "asvs_chapter": "V6"})
+        ok("TC184 cm_iso_v6", "ISO 27001" in txt and "cryptographic" in txt.lower())
+
+        txt = await call(client, "compliance_map", {"framework": "nist-800-53", "asvs_chapter": "V3"})
+        ok("TC185 cm_nist_v3", "NIST" in txt and "IA-" in txt)
+
+        txt = await call(client, "compliance_map", {"framework": "all"})
+        ok("TC186 cm_all_chapters", txt.count("### ASVS") >= 10, f"chapters={txt.count('### ASVS')}")
 
     # ============================================================
     # SUMMARY

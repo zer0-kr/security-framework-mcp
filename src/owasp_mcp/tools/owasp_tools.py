@@ -809,3 +809,158 @@ def register_tools(mcp: "FastMCP", index_mgr: "IndexManager") -> None:
 
         header = f"## Security Checklist: {project_type.upper()} ({level})\n\n_{item_count} items_\n"
         return header + "\n\n".join(sections)
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
+    async def get_cwe(
+        id: Annotated[str, Field(description="CWE ID, e.g. 'CWE-79' or '79'", max_length=20)],
+    ) -> str:
+        """Look up a CWE (Common Weakness Enumeration) by ID with description and OWASP cross-references."""
+        db_path = await index_mgr.ensure_index()
+
+        cwe_id = id.strip().upper()
+        if not cwe_id.startswith("CWE-"):
+            cwe_id = f"CWE-{cwe_id}"
+
+        record = db.get_by_id(db_path, "cwes", "cwe_id", cwe_id)
+        if record is None:
+            return f"CWE '{id}' not found in local database. Try https://cwe.mitre.org/data/definitions/{cwe_id.replace('CWE-', '')}.html"
+
+        lines = [
+            f"# {record['cwe_id']} — {record['name']}",
+            "",
+            "## Description",
+            record["description"],
+            "",
+            f"**MITRE URL:** {record['url']}",
+        ]
+
+        cwe_set_match = lambda cwes_str: cwe_id in {c.strip() for c in cwes_str.split(",")}
+        matched_top10 = [i for i in TOP10_2021 if cwe_set_match(i["cwes"])]
+        matched_api = [i for i in API_TOP10_2023 if cwe_set_match(i["cwes"])]
+        matched_llm = [i for i in LLM_TOP10_2025 if cwe_set_match(i["cwes"])]
+
+        if matched_top10 or matched_api or matched_llm:
+            lines.append("\n## OWASP Mappings")
+            for item in matched_top10:
+                lines.append(f"- **Top 10:** {item['id']} — {item['name']}")
+            for item in matched_api:
+                lines.append(f"- **API Top 10:** {item['id']} — {item['name']}")
+            for item in matched_llm:
+                lines.append(f"- **LLM Top 10:** {item['id']} — {item['name']}")
+
+        return "\n".join(lines)
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
+    async def compliance_map(
+        framework: Annotated[
+            Literal["pci-dss", "iso27001", "nist-800-53", "all"],
+            Field(description="Compliance framework to map ASVS requirements to"),
+        ] = "all",
+        asvs_chapter: Annotated[
+            str | None,
+            Field(description="Filter by ASVS chapter, e.g. 'V1'"),
+        ] = None,
+    ) -> str:
+        """Map OWASP ASVS requirements to compliance frameworks (PCI-DSS, ISO 27001, NIST 800-53)."""
+        _COMPLIANCE_MAP: dict[str, dict[str, list[str]]] = {
+            "V1": {
+                "pci-dss": ["6.5.1 (Injection flaws)"],
+                "iso27001": ["A.14.2.5 (Secure system engineering principles)"],
+                "nist-800-53": ["SI-10 (Information Input Validation)", "SI-15 (Information Output Filtering)"],
+            },
+            "V2": {
+                "pci-dss": ["6.5.8 (Improper access control)"],
+                "iso27001": ["A.14.2.5 (Secure system engineering principles)"],
+                "nist-800-53": ["SI-10 (Information Input Validation)"],
+            },
+            "V3": {
+                "pci-dss": ["6.5.10 (Broken authentication)"],
+                "iso27001": ["A.9.4.2 (Secure log-on procedures)", "A.9.2.4 (Management of secret authentication)"],
+                "nist-800-53": ["IA-2 (Identification and Authentication)", "IA-5 (Authenticator Management)"],
+            },
+            "V4": {
+                "pci-dss": ["6.5.8 (Improper access control)", "7.1 (Limit access)"],
+                "iso27001": ["A.9.1.1 (Access control policy)", "A.9.4.1 (Information access restriction)"],
+                "nist-800-53": ["AC-3 (Access Enforcement)", "AC-6 (Least Privilege)"],
+            },
+            "V5": {
+                "pci-dss": ["6.5.1 (Injection flaws)", "6.5.7 (XSS)"],
+                "iso27001": ["A.14.2.5 (Secure system engineering principles)"],
+                "nist-800-53": ["SI-10 (Information Input Validation)"],
+            },
+            "V6": {
+                "pci-dss": ["3.4 (Render PAN unreadable)", "4.1 (Strong cryptography)"],
+                "iso27001": ["A.10.1.1 (Policy on use of cryptographic controls)", "A.10.1.2 (Key management)"],
+                "nist-800-53": ["SC-12 (Cryptographic Key Establishment)", "SC-13 (Cryptographic Protection)"],
+            },
+            "V7": {
+                "pci-dss": ["6.5.10 (Broken authentication)", "8.1 (Identify users)"],
+                "iso27001": ["A.9.4.2 (Secure log-on procedures)"],
+                "nist-800-53": ["SC-23 (Session Authenticity)", "AC-12 (Session Termination)"],
+            },
+            "V8": {
+                "pci-dss": ["6.5.4 (Insecure direct object references)"],
+                "iso27001": ["A.14.1.2 (Securing application services)"],
+                "nist-800-53": ["SC-8 (Transmission Confidentiality and Integrity)"],
+            },
+            "V9": {
+                "pci-dss": ["4.1 (Strong cryptography for transmission)"],
+                "iso27001": ["A.13.1.1 (Network controls)", "A.14.1.2 (Securing application services)"],
+                "nist-800-53": ["SC-8 (Transmission Confidentiality)", "SC-23 (Session Authenticity)"],
+            },
+            "V10": {
+                "pci-dss": ["6.3.2 (Review custom code)", "6.5 (Address common vulnerabilities)"],
+                "iso27001": ["A.14.2.1 (Secure development policy)"],
+                "nist-800-53": ["SA-11 (Developer Testing and Evaluation)", "SI-2 (Flaw Remediation)"],
+            },
+            "V11": {
+                "pci-dss": ["6.5 (Address common coding vulnerabilities)"],
+                "iso27001": ["A.14.2.5 (Secure system engineering principles)"],
+                "nist-800-53": ["SA-11 (Developer Testing and Evaluation)"],
+            },
+            "V12": {
+                "pci-dss": ["6.5.8 (Improper access control)"],
+                "iso27001": ["A.13.1.3 (Segregation in networks)"],
+                "nist-800-53": ["SC-4 (Information in Shared System Resources)"],
+            },
+            "V13": {
+                "pci-dss": ["6.5.1 (Injection)", "6.5.4 (Insecure direct object references)"],
+                "iso27001": ["A.14.1.2 (Securing application services on public networks)"],
+                "nist-800-53": ["SI-10 (Information Input Validation)", "AC-3 (Access Enforcement)"],
+            },
+            "V14": {
+                "pci-dss": ["2.2 (Configuration standards)", "6.2 (Security patches)"],
+                "iso27001": ["A.12.6.1 (Management of technical vulnerabilities)", "A.14.2.2 (System change control)"],
+                "nist-800-53": ["CM-6 (Configuration Settings)", "CM-7 (Least Functionality)"],
+            },
+        }
+
+        frameworks = [framework] if framework != "all" else ["pci-dss", "iso27001", "nist-800-53"]
+        chapters = [asvs_chapter.upper()] if asvs_chapter else sorted(_COMPLIANCE_MAP.keys())
+
+        _FRAMEWORK_LABELS = {
+            "pci-dss": "PCI-DSS 4.0",
+            "iso27001": "ISO 27001:2022",
+            "nist-800-53": "NIST SP 800-53 Rev. 5",
+        }
+
+        sections: list[str] = []
+        for ch in chapters:
+            if ch not in _COMPLIANCE_MAP:
+                continue
+            ch_map = _COMPLIANCE_MAP[ch]
+            lines = [f"### ASVS {ch}"]
+            for fw in frameworks:
+                controls = ch_map.get(fw, [])
+                if controls:
+                    lines.append(f"**{_FRAMEWORK_LABELS.get(fw, fw)}:** {', '.join(controls)}")
+            sections.append("\n".join(lines))
+
+        if not sections:
+            return f"No compliance mapping found for the given criteria."
+
+        header = f"## Compliance Mapping"
+        if asvs_chapter:
+            header += f" — ASVS {asvs_chapter.upper()}"
+        header += f"\n\n_Mapping ASVS chapters to {', '.join(_FRAMEWORK_LABELS.get(f, f) for f in frameworks)}_\n"
+        return header + "\n\n".join(sections)
