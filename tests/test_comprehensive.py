@@ -389,6 +389,186 @@ async def run_all():
            int(txt.split("(")[1].split(" ")[0]) >= 418 if "(" in txt else False,
            txt[:100])
 
+        print("\n=== GROUP 14: get_api_top10 ===")
+
+        txt = await call(client, "get_api_top10", {})
+        ok("TC92 api_list_all", "API1:2023" in txt and "API10:2023" in txt)
+        ok("TC93 api_list_has_10", txt.count("API") >= 10)
+
+        txt = await call(client, "get_api_top10", {"id": "API1:2023"})
+        ok("TC94 api_item1", "Broken Object Level Authorization" in txt)
+        ok("TC95 api_item1_cwes", "CWE-" in txt)
+        ok("TC96 api_item1_url", "owasp.org" in txt)
+
+        txt = await call(client, "get_api_top10", {"id": "API7:2023"})
+        ok("TC97 api_item7_ssrf", "Server Side Request Forgery" in txt)
+
+        txt = await call(client, "get_api_top10", {"id": "api3:2023"})
+        ok("TC98 api_case_insensitive", "Object Property" in txt, txt[:200])
+
+        txt = await call(client, "get_api_top10", {"id": "  API1:2023  "})
+        ok("TC99 api_whitespace", "Broken Object" in txt)
+
+        txt = await call(client, "get_api_top10", {"id": "API99:2023"})
+        ok("TC100 api_invalid_id", "not found" in txt.lower())
+
+        print("\n=== GROUP 15: get_llm_top10 ===")
+
+        txt = await call(client, "get_llm_top10", {})
+        ok("TC101 llm_list_all", "LLM01:2025" in txt and "LLM10:2025" in txt)
+        ok("TC102 llm_list_has_10", txt.count("LLM") >= 10)
+
+        txt = await call(client, "get_llm_top10", {"id": "LLM01:2025"})
+        ok("TC103 llm_item1", "Prompt Injection" in txt)
+        ok("TC104 llm_item1_cwes", "CWE-" in txt)
+
+        txt = await call(client, "get_llm_top10", {"id": "LLM06:2025"})
+        ok("TC105 llm_item6", "Excessive Agency" in txt)
+
+        txt = await call(client, "get_llm_top10", {"id": "LLM10:2025"})
+        ok("TC106 llm_item10", "Unbounded Consumption" in txt)
+
+        txt = await call(client, "get_llm_top10", {"id": "llm01:2025"})
+        ok("TC107 llm_case_insensitive", "Prompt Injection" in txt, txt[:200])
+
+        txt = await call(client, "get_llm_top10", {"id": "LLM99:2025"})
+        ok("TC108 llm_invalid_id", "not found" in txt.lower())
+
+        print("\n=== GROUP 16: get_proactive_controls ===")
+
+        txt = await call(client, "get_proactive_controls", {})
+        ok("TC109 pc_list_all", "C1" in txt and "C10" in txt)
+        ok("TC110 pc_list_has_10", txt.count("**C") >= 10)
+
+        txt = await call(client, "get_proactive_controls", {"id": "C1"})
+        ok("TC111 pc_c1", "Access Control" in txt)
+        ok("TC112 pc_c1_related", "A01:2021" in txt or "Broken Access" in txt)
+
+        txt = await call(client, "get_proactive_controls", {"id": "C3"})
+        ok("TC113 pc_c3", "Validate" in txt or "Input" in txt)
+
+        txt = await call(client, "get_proactive_controls", {"id": "C10"})
+        ok("TC114 pc_c10", "SSRF" in txt or "Server Side" in txt)
+
+        txt = await call(client, "get_proactive_controls", {"id": "c1"})
+        ok("TC115 pc_case_insensitive", "Access Control" in txt, txt[:200])
+
+        txt = await call(client, "get_proactive_controls", {"id": "C99"})
+        ok("TC116 pc_invalid_id", "not found" in txt.lower())
+
+        print("\n=== GROUP 17: get_masvs ===")
+
+        txt = await call(client, "get_masvs", {})
+        ok("TC117 masvs_list_all", "MASVS Controls" in txt and "total" in txt.lower())
+        ok("TC118 masvs_has_23", "23 total" in txt, txt[:100])
+
+        txt = await call(client, "get_masvs", {"category": "MASVS-STORAGE"})
+        ok("TC119 masvs_storage", "Storage" in txt and "MASVS-STORAGE" in txt)
+
+        txt = await call(client, "get_masvs", {"category": "MASVS-CRYPTO"})
+        ok("TC120 masvs_crypto", "Cryptography" in txt)
+        ok("TC121 masvs_crypto_count", "2 total" in txt, txt[:100])
+
+        txt = await call(client, "get_masvs", {"category": "MASVS-AUTH"})
+        ok("TC122 masvs_auth", "Authentication" in txt)
+
+        txt = await call(client, "get_masvs", {"category": "MASVS-NETWORK"})
+        ok("TC123 masvs_network", "Network" in txt or "TLS" in txt)
+
+        txt = await call(client, "get_masvs", {"category": "MASVS-PLATFORM"})
+        ok("TC124 masvs_platform", "Platform" in txt)
+
+        txt = await call(client, "get_masvs", {"category": "MASVS-CODE"})
+        ok("TC125 masvs_code", "Code" in txt or "vulnerabilit" in txt.lower())
+
+        txt = await call(client, "get_masvs", {"category": "MASVS-RESILIENCE"})
+        ok("TC126 masvs_resilience", "Resilience" in txt or "tamper" in txt.lower())
+
+        txt = await call(client, "get_masvs", {"category": "MASVS-PRIVACY"})
+        ok("TC127 masvs_privacy", "Privacy" in txt)
+
+        txt = await call(client, "get_masvs", {"query": "cryptography"})
+        ok("TC128 masvs_search_crypto", "MASVS" in txt or "No MASVS" in txt)
+
+        txt = await call(client, "get_masvs", {"category": "MASVS-ZZZZZ"})
+        ok("TC129 masvs_invalid_category", "No MASVS" in txt, txt[:200])
+
+        txt = await call(client, "get_masvs", {"query": "sensitive data", "category": "MASVS-STORAGE"})
+        ok("TC130 masvs_search_with_filter", isinstance(txt, str))
+
+        print("\n=== GROUP 18: assess_stack ===")
+
+        txt = await call(client, "assess_stack", {"stack": "React, Node.js, PostgreSQL, REST API"})
+        ok("TC131 assess_web_api_db", "API Security" in txt and "Web Security" in txt and "Database" in txt)
+        ok("TC132 assess_has_tool_refs", "get_api_top10" in txt or "get_top10" in txt)
+
+        txt = await call(client, "assess_stack", {"stack": "Flutter, Firebase, iOS, Android"})
+        ok("TC133 assess_mobile", "Mobile Security" in txt and "MASVS" in txt)
+
+        txt = await call(client, "assess_stack", {"stack": "Python, GPT-4, LangChain, RAG, vector database"})
+        ok("TC134 assess_llm", "AI/LLM Security" in txt and "LLM Top 10" in txt)
+
+        txt = await call(client, "assess_stack", {"stack": "AWS Lambda, Docker, Kubernetes, Terraform"})
+        ok("TC135 assess_cloud", "Cloud" in txt)
+
+        txt = await call(client, "assess_stack", {"stack": "OAuth2, JWT, SAML, Keycloak"})
+        ok("TC136 assess_auth", "Authentication" in txt)
+
+        txt = await call(client, "assess_stack", {"stack": "TLS, AES encryption, certificate management"})
+        ok("TC137 assess_crypto", "Cryptography" in txt)
+
+        txt = await call(client, "assess_stack", {"stack": "React, Node.js, GPT-4, PostgreSQL, JWT, Docker"})
+        ok("TC138 assess_full_stack", txt.count("###") >= 4, f"sections={txt.count('###')}")
+
+        txt = await call(client, "assess_stack", {"stack": "Cobol, Fortran, Assembly"})
+        ok("TC139 assess_unknown_defaults_web", "Security Assessment" in txt)
+
+        txt = await call(client, "assess_stack", {"stack": "GraphQL, microservice"})
+        ok("TC140 assess_graphql", "API Security" in txt)
+
+        print("\n=== GROUP 19: Cross-Source Integration ===")
+
+        txt = await call(client, "search_owasp", {"query": "prompt injection"})
+        ok("TC141 xsearch_llm", "LLM Top 10" in txt, txt[:500])
+
+        txt = await call(client, "search_owasp", {"query": "BOLA authorization"})
+        ok("TC142 xsearch_api", isinstance(txt, str))
+
+        txt = await call(client, "search_owasp", {"query": "access control"})
+        ok("TC143 xsearch_proactive", "Proactive" in txt or "results" in txt.lower(), txt[:500])
+
+        txt = await call(client, "search_owasp", {"query": "mobile storage"})
+        ok("TC144 xsearch_masvs", isinstance(txt, str))
+
+        txt = await call(client, "search_owasp", {"query": "cryptography encryption"})
+        ok("TC145 xsearch_crypto_multi", "results" in txt.lower() or "OWASP Search" in txt)
+
+        print("\n=== GROUP 20: New Data Integrity ===")
+
+        txt = await call(client, "get_masvs", {"limit": 1})
+        ok("TC146 masvs_total_23", "23 total" in txt, txt[:100])
+
+        txt = await call(client, "get_api_top10", {})
+        ok("TC147 api10_has_all_10", all(f"API{i}:2023" in txt for i in range(1, 11)))
+
+        txt = await call(client, "get_llm_top10", {})
+        ok("TC148 llm10_has_all_10",
+           all(f"LLM{str(i).zfill(2)}:2025" in txt for i in range(1, 11)))
+
+        txt = await call(client, "get_proactive_controls", {})
+        ok("TC149 pc_has_all_10", all(f"C{i}" in txt for i in range(1, 11)))
+
+        print("\n=== GROUP 21: Edge Cases New Tools ===")
+
+        txt = await call_expect_error(client, "assess_stack", {"stack": "'; DROP TABLE projects; --"})
+        ok("TC150 assess_sqli", txt is not None and "ERROR" not in str(txt))
+
+        txt = await call_expect_error(client, "get_masvs", {"query": "'; DROP TABLE"})
+        ok("TC151 masvs_sqli", txt is not None and "ERROR" not in str(txt))
+
+        txt = await call_expect_error(client, "search_owasp", {"query": "NOT AND OR"})
+        ok("TC152 xsearch_operators_only", txt is not None)
+
     # ============================================================
     # SUMMARY
     # ============================================================
