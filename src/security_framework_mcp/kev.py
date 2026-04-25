@@ -29,8 +29,8 @@ class KEVClient:
                 self._catalog = json.loads(self._cache_path.read_text())
                 self._last_load = now
                 return self._catalog
-            except (json.JSONDecodeError, OSError):
-                pass
+            except (json.JSONDecodeError, OSError) as exc:
+                log.debug("KEV cache read failed, will re-fetch: %s", exc)
 
         try:
             async with httpx.AsyncClient(follow_redirects=True) as client:

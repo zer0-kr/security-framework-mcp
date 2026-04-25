@@ -1156,8 +1156,8 @@ def register_tools(mcp: "FastMCP", index_mgr: "IndexManager", nvd_client: "NVDCl
                     for row in results:
                         lines.append(f"### {row['term']}\n{row['definition']}\n_Source: {row.get('source', 'N/A')}_\n")
                     return "\n".join(lines)
-            except Exception:
-                pass
+            except Exception as exc:
+                log.debug("Glossary FTS search failed: %s", exc)
             return f"Term '{term}' not found. Use get_nist_glossary() to list all terms."
 
         return f"# {record['term']}\n\n{record['definition']}\n\n_Source: {record.get('source', 'N/A')}_"
@@ -1182,8 +1182,8 @@ def register_tools(mcp: "FastMCP", index_mgr: "IndexManager", nvd_client: "NVDCl
                         for r in results:
                             lines.append(f"- **{r['id']}** — {r['title']}")
                         return "\n".join(lines)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    log.debug("Publication FTS search failed: %s", exc)
                 return f"Publication '{id}' not found."
             lines = [
                 f"# {record['id']} — {record['title']}",
