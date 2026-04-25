@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 
-import httpx
+from owasp_mcp.http_utils import fetch_json
 
 log = logging.getLogger(__name__)
 
@@ -33,9 +33,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS asvs_fts USING fts5(
 
 
 def scrape_asvs(conn: sqlite3.Connection) -> int:
-    resp = httpx.get(ASVS_URL, timeout=30, follow_redirects=True)
-    resp.raise_for_status()
-    data = resp.json()
+    data = fetch_json(ASVS_URL)
 
     requirements = data.get("requirements", [])
     rows = []

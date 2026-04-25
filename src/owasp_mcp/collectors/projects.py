@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 
-import httpx
+from owasp_mcp.http_utils import fetch_json
 
 log = logging.getLogger(__name__)
 
@@ -46,9 +46,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS projects_fts USING fts5(
 
 
 def scrape_projects(conn: sqlite3.Connection) -> int:
-    resp = httpx.get(PROJECTS_URL, timeout=30, follow_redirects=True)
-    resp.raise_for_status()
-    projects = resp.json()
+    projects = fetch_json(PROJECTS_URL)
 
     rows = []
     for p in projects:

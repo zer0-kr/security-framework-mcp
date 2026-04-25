@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 
-import httpx
+from owasp_mcp.http_utils import fetch_json
 
 log = logging.getLogger(__name__)
 
@@ -31,9 +31,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS wstg_fts USING fts5(
 
 
 def scrape_wstg(conn: sqlite3.Connection) -> int:
-    resp = httpx.get(WSTG_URL, timeout=30, follow_redirects=True)
-    resp.raise_for_status()
-    data = resp.json()
+    data = fetch_json(WSTG_URL)
 
     rows = []
     categories = data.get("categories", {})

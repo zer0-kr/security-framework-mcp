@@ -4,6 +4,7 @@ import logging
 import sqlite3
 
 import httpx
+from owasp_mcp.http_utils import fetch_json
 
 log = logging.getLogger(__name__)
 
@@ -32,14 +33,10 @@ CREATE VIRTUAL TABLE IF NOT EXISTS cheatsheets_fts USING fts5(
 
 
 def scrape_cheatsheets(conn: sqlite3.Connection) -> int:
-    resp = httpx.get(
+    files = fetch_json(
         CHEATSHEETS_API_URL,
-        timeout=30,
-        follow_redirects=True,
         headers={"Accept": "application/vnd.github.v3+json"},
     )
-    resp.raise_for_status()
-    files = resp.json()
 
     rows = []
     for f in files:
