@@ -69,7 +69,7 @@ async def run_all():
 
         tools = await client.list_tools()
         tool_names = {t.name for t in tools}
-        ok("TC01 tool_count", len(tools) == 31, f"got {len(tools)}")
+        ok("TC01 tool_count", len(tools) == 33, f"got {len(tools)}")
 
         expected_tools = {
             "list_projects", "search_projects", "get_project",
@@ -83,6 +83,7 @@ async def run_all():
             "assess_mcp_security", "threat_model",
             "search_nist", "get_nist_control", "get_nist_csf", "get_nist_glossary",
             "get_nist_publication", "get_nist_cmvp", "get_nice_roles",
+            "get_nist_pf", "get_nist_rmf",
         }
         ok("TC02 all_tools_present", expected_tools == tool_names,
            f"missing={expected_tools - tool_names}, extra={tool_names - expected_tools}")

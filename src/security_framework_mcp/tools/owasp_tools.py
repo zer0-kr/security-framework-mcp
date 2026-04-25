@@ -50,6 +50,8 @@ _SOURCE_TABLES: dict[str, str] = {
     "nist_publications": "nist_publications",
     "nist_cmvp": "nist_cmvp",
     "nist_nice": "nist_nice",
+    "nist_pf": "nist_pf",
+    "nist_rmf": "nist_rmf",
 }
 
 _SOURCE_LABELS: dict[str, str] = {
@@ -70,6 +72,8 @@ _SOURCE_LABELS: dict[str, str] = {
     "nist_publications": "NIST Publications",
     "nist_cmvp": "NIST CMVP",
     "nist_nice": "NICE Work Roles",
+    "nist_pf": "NIST Privacy Framework 1.0",
+    "nist_rmf": "NIST RMF (SP 800-37)",
 }
 
 
@@ -136,6 +140,8 @@ _FORMATTERS = {
     "nist_publications": lambda row: f"**{row.get('id', '?')}** — {row.get('title', '')[:120]}",
     "nist_cmvp": lambda row: f"**Cert #{row.get('cert_number', '?')}** {row.get('vendor', '')} {row.get('module_name', '')} (Level {row.get('fips_level', '?')})",
     "nist_nice": lambda row: f"**{row.get('id', '?')}** {row.get('name', '')} [{row.get('category', '')}]",
+    "nist_pf": lambda row: f"**{row.get('id', '?')}** [{row.get('level', '')}] {row.get('title', '')}",
+    "nist_rmf": lambda row: f"**{row.get('step_id', '?')}** {row.get('name', '')} — {row.get('description', '')[:120]}",
 }
 
 
@@ -834,8 +840,8 @@ def register_tools(mcp: "FastMCP", index_mgr: "IndexManager", nvd_client: "NVDCl
     async def search_nist(
         query: Annotated[str, Field(description="Search keywords", max_length=500)],
         source: Annotated[
-            Literal["controls", "csf", "glossary", "publications", "cmvp", "nice", "all"] | None,
-            Field(description="Filter: controls, csf, glossary, publications, cmvp, nice, or all"),
+            Literal["controls", "csf", "pf", "rmf", "glossary", "publications", "cmvp", "nice", "all"] | None,
+            Field(description="Filter: controls, csf, pf, rmf, glossary, publications, cmvp, nice, or all"),
         ] = "all",
         limit: Annotated[int, Field(ge=1, le=50)] = 10,
     ) -> str:
@@ -849,6 +855,8 @@ def register_tools(mcp: "FastMCP", index_mgr: "IndexManager", nvd_client: "NVDCl
             "publications": ("nist_publications", "NIST Publications"),
             "cmvp": ("nist_cmvp", "NIST CMVP"),
             "nice": ("nist_nice", "NICE Work Roles"),
+            "pf": ("nist_pf", "NIST Privacy Framework 1.0"),
+            "rmf": ("nist_rmf", "NIST RMF (SP 800-37)"),
         }
         sources = list(source_map.items()) if source == "all" else [(source, source_map[source])]
 
@@ -873,28 +881,75 @@ def register_tools(mcp: "FastMCP", index_mgr: "IndexManager", nvd_client: "NVDCl
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
     async def get_nist_control(
-        control_id: Annotated[str, Field(description="Control ID, e.g. 'ac-1', 'AC-2(1)'", max_length=30)],
+        control_id: Annotated[str | None, Field(description="Control ID, e.g. 'ac-1'. Omit with baseline to list controls.")] = None,
+        baseline: Annotated[
+            Literal["LOW", "MODERATE", "HIGH"] | None,
+            Field(description="Filter by SP 800-53B baseline level"),
+        ] = None,
+        family: Annotated[str | None, Field(description="Filter by family ID, e.g. 'ac', 'si'")] = None,
+        include_assessment: Annotated[bool, Field(description="Include SP 800-53A assessment objectives and methods")] = False,
+        limit: Annotated[int, Field(ge=1, le=100)] = 20,
     ) -> str:
-        """Get a specific NIST SP 800-53 Rev. 5 security control by ID."""
+        """Get NIST SP 800-53 Rev. 5 controls. Filter by ID, baseline (LOW/MODERATE/HIGH), or family."""
         db_path = await index_mgr.ensure_index()
 
-        normalized = control_id.strip().lower().replace(" ", "")
-        record = db.get_by_id(db_path, "nist_controls", "id", normalized)
-        if record is None:
-            return f"Control '{control_id}' not found. Try search_nist to find the correct ID."
+        if control_id:
+            normalized = control_id.strip().lower().replace(" ", "")
+            record = db.get_by_id(db_path, "nist_controls", "id", normalized)
+            if record is None:
+                return f"Control '{control_id}' not found. Try search_nist to find the correct ID."
 
-        lines = [
-            f"# {record['id'].upper()} — {record['title']}",
-            f"\n**Family:** {record.get('family_name', '?')} ({record.get('family_id', '').upper()})",
-        ]
-        if record.get("baselines"):
-            lines.append(f"**Baselines:** {record['baselines']}")
-        if record.get("is_withdrawn"):
-            lines.append("**Status:** WITHDRAWN")
-        if record.get("statement"):
-            lines.append(f"\n## Statement\n{record['statement'][:3000]}")
-        if record.get("guidance"):
-            lines.append(f"\n## Supplemental Guidance\n{record['guidance'][:3000]}")
+            lines = [
+                f"# {record['id'].upper()} — {record['title']}",
+                f"\n**Family:** {record.get('family_name', '?')} ({record.get('family_id', '').upper()})",
+            ]
+            if record.get("baselines"):
+                lines.append(f"**Baselines:** {record['baselines']}")
+            if record.get("is_withdrawn"):
+                lines.append("**Status:** WITHDRAWN")
+            if record.get("statement"):
+                lines.append(f"\n## Statement\n{record['statement'][:3000]}")
+            if record.get("guidance"):
+                lines.append(f"\n## Supplemental Guidance\n{record['guidance'][:3000]}")
+            if include_assessment or True:
+                if record.get("assessment_objectives"):
+                    lines.append(f"\n## Assessment Objectives (SP 800-53A)\n{record['assessment_objectives'][:2000]}")
+                if record.get("assessment_methods"):
+                    lines.append(f"\n## Assessment Methods\n{record['assessment_methods'][:2000]}")
+            return "\n".join(lines)
+
+        conn = db.get_connection(db_path)
+        try:
+            where_clauses = []
+            params: list = []
+            if baseline:
+                where_clauses.append("baselines LIKE ?")
+                params.append(f"%{baseline}%")
+            if family:
+                where_clauses.append("family_id = ?")
+                params.append(family.strip().lower())
+            where_sql = " WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+            total = conn.execute(f"SELECT count(*) FROM nist_controls{where_sql}", params).fetchone()[0]
+            rows = conn.execute(f"SELECT * FROM nist_controls{where_sql} LIMIT ?", [*params, limit]).fetchall()
+            results = [dict(r) for r in rows]
+        finally:
+            conn.close()
+
+        if not results:
+            return "No controls found matching criteria."
+
+        header = f"## SP 800-53 Controls"
+        if baseline:
+            header += f" — {baseline} Baseline"
+        if family:
+            header += f" — {family.upper()} Family"
+        header += f" ({total} total)\n"
+
+        lines = [header]
+        for r in results:
+            lines.append(f"- **{r['id'].upper()}** {r['title']} [{r.get('baselines', '')}]")
+        if total > limit:
+            lines.append(f"\n_Showing {limit} of {total}. Use limit parameter for more._")
         return "\n".join(lines)
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
@@ -1145,6 +1200,51 @@ def register_tools(mcp: "FastMCP", index_mgr: "IndexManager", nvd_client: "NVDCl
 
         header = f"## Security Checklist: {project_type.upper()} ({level})\n\n_{item_count} items_\n"
         return header + "\n\n".join(sections)
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
+    async def get_nist_pf(
+        function_id: Annotated[str | None, Field(description="PF Function: ID-P, GV-P, CT-P, CM-P, PR-P. Omit for all.")] = None,
+        level: Annotated[Literal["function", "category", "subcategory", "all"] | None, Field(description="Filter by level")] = "all",
+        limit: Annotated[int, Field(ge=1, le=100)] = 50,
+    ) -> str:
+        """Get NIST Privacy Framework (PF) 1.0 functions, categories, and subcategories."""
+        db_path = await index_mgr.ensure_index()
+        filters: dict[str, Any] = {}
+        if function_id:
+            filters["function_id"] = function_id.upper()
+        if level and level != "all":
+            filters["level"] = level
+        results, total = db.get_all(db_path, "nist_pf", filters=filters, limit=limit)
+        if not results:
+            return "No Privacy Framework entries found."
+        lines = [f"## NIST Privacy Framework 1.0 ({total} total)\n"]
+        for row in results:
+            lvl = row.get("level", "")
+            indent = "  " if lvl == "category" else "    " if lvl == "subcategory" else ""
+            lines.append(f"{indent}- **{row.get('id', '?')}** [{lvl}] {row.get('title', '')}")
+        return "\n".join(lines)
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
+    async def get_nist_rmf(
+        step: Annotated[str | None, Field(description="RMF step: PREPARE, CATEGORIZE, SELECT, IMPLEMENT, ASSESS, AUTHORIZE, MONITOR. Omit for all.")] = None,
+    ) -> str:
+        """Get NIST SP 800-37 Risk Management Framework (RMF) steps, tasks, and key documents."""
+        db_path = await index_mgr.ensure_index()
+        if step:
+            record = db.get_by_id(db_path, "nist_rmf", "step_id", step.strip().upper())
+            if record is None:
+                return f"RMF step '{step}' not found. Valid: PREPARE, CATEGORIZE, SELECT, IMPLEMENT, ASSESS, AUTHORIZE, MONITOR."
+            return "\n".join([
+                f"# RMF Step: {record['name']}",
+                f"\n{record['description']}",
+                f"\n## Tasks\n{record['tasks']}",
+                f"\n## Key Documents\n{record['key_documents']}",
+            ])
+        results, total = db.get_all(db_path, "nist_rmf", limit=10)
+        lines = ["## NIST Risk Management Framework (SP 800-37)\n"]
+        for r in results:
+            lines.append(f"- **{r['step_id']}** — {r['name']}: {r['description'][:120]}...")
+        return "\n".join(lines)
 
     from security_framework_mcp.collectors.mcp_top10 import MCP_TOP10_2025
 

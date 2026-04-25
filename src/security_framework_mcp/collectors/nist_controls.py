@@ -18,14 +18,17 @@ CREATE TABLE IF NOT EXISTS nist_controls (
     statement TEXT,
     guidance TEXT,
     baselines TEXT,
-    is_withdrawn INTEGER DEFAULT 0
+    is_withdrawn INTEGER DEFAULT 0,
+    assessment_objectives TEXT,
+    assessment_methods TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_nist_ctrl_family ON nist_controls(family_id);
+CREATE INDEX IF NOT EXISTS idx_nist_ctrl_baselines ON nist_controls(baselines);
 """
 
 FTS_SQL = """
 CREATE VIRTUAL TABLE IF NOT EXISTS nist_controls_fts USING fts5(
-    id, family_name, title, statement, guidance,
+    id, family_name, title, statement, guidance, assessment_objectives,
     content='nist_controls', content_rowid='rowid'
 );
 """
@@ -54,62 +57,55 @@ def _extract_prose(parts: list[dict[str, Any]] | None) -> str:
     return " ".join(texts)
 
 
-def _parse_controls(groups: list[dict], baseline_ids: set[str]) -> list[tuple]:
+def _extract_assessment(parts: list[dict[str, Any]]) -> tuple[str, str]:
+    objectives = _extract_prose([p for p in parts if p.get("name") == "assessment-objective"])
+    methods_parts = [p for p in parts if p.get("name") == "assessment-method"]
+    methods = []
+    for mp in methods_parts:
+        method_id = mp.get("id", "")
+        method_type = "examine" if "examine" in method_id else "interview" if "interview" in method_id else "test"
+        objects_prose = _extract_prose([sp for sp in mp.get("parts", []) if sp.get("name") == "assessment-objects"])
+        if objects_prose:
+            methods.append(f"[{method_type.upper()}] {objects_prose[:500]}")
+    return objectives[:3000], "; ".join(methods)[:3000]
+
+
+def _parse_one_control(ctrl: dict, family_id: str, family_name: str, baseline_ids: dict) -> tuple:
+    ctrl_id = ctrl.get("id", "")
+    title = ctrl.get("title", "")
+    is_withdrawn = 1 if any(
+        True for p in ctrl.get("props", [])
+        if p.get("name") == "status" and p.get("value") == "withdrawn"
+    ) else 0
+
+    parts = ctrl.get("parts", [])
+    statement = _extract_prose([p for p in parts if p.get("name") == "statement"])
+    guidance = _extract_prose([p for p in parts if p.get("name") == "guidance"])
+    assess_obj, assess_methods = _extract_assessment(parts)
+
+    baselines = []
+    norm_id = ctrl_id.lower()
+    for level in ["LOW", "MODERATE", "HIGH"]:
+        if norm_id in baseline_ids.get(level, set()):
+            baselines.append(level)
+
+    return (
+        ctrl_id, family_id, family_name, title,
+        statement[:5000], guidance[:5000],
+        ",".join(baselines), is_withdrawn,
+        assess_obj, assess_methods,
+    )
+
+
+def _parse_controls(groups: list[dict], baseline_ids: dict) -> list[tuple]:
     rows = []
     for group in groups:
         family_id = group.get("id", "")
         family_name = group.get("title", "")
         for ctrl in group.get("controls", []):
-            ctrl_id = ctrl.get("id", "")
-            title = ctrl.get("title", "")
-            is_withdrawn = 1 if any(
-                p.get("class") == "assessment" for p in ctrl.get("props", [])
-                if p.get("name") == "status" and p.get("value") == "withdrawn"
-            ) else 0
-
-            statement = _extract_prose(
-                [p for p in ctrl.get("parts", []) if p.get("name") == "statement"]
-            )
-            guidance = _extract_prose(
-                [p for p in ctrl.get("parts", []) if p.get("name") == "guidance"]
-            )
-
-            baselines = []
-            norm_id = ctrl_id.lower()
-            for level in ["LOW", "MODERATE", "HIGH"]:
-                if norm_id in baseline_ids.get(level, set()):
-                    baselines.append(level)
-
-            rows.append((
-                ctrl_id, family_id, family_name, title,
-                statement[:5000] if statement else "",
-                guidance[:5000] if guidance else "",
-                ",".join(baselines) if baselines else "",
-                is_withdrawn,
-            ))
-
+            rows.append(_parse_one_control(ctrl, family_id, family_name, baseline_ids))
             for enh in ctrl.get("controls", []):
-                enh_id = enh.get("id", "")
-                enh_title = enh.get("title", "")
-                enh_statement = _extract_prose(
-                    [p for p in enh.get("parts", []) if p.get("name") == "statement"]
-                )
-                enh_guidance = _extract_prose(
-                    [p for p in enh.get("parts", []) if p.get("name") == "guidance"]
-                )
-                enh_baselines = []
-                enh_norm = enh_id.lower()
-                for level in ["LOW", "MODERATE", "HIGH"]:
-                    if enh_norm in baseline_ids.get(level, set()):
-                        enh_baselines.append(level)
-
-                rows.append((
-                    enh_id, family_id, family_name, enh_title,
-                    enh_statement[:5000] if enh_statement else "",
-                    enh_guidance[:5000] if enh_guidance else "",
-                    ",".join(enh_baselines) if enh_baselines else "",
-                    0,
-                ))
+                rows.append(_parse_one_control(enh, family_id, family_name, baseline_ids))
     return rows
 
 
@@ -142,8 +138,8 @@ def scrape_nist_controls(conn: sqlite3.Connection) -> int:
 
     conn.executemany(
         "INSERT OR REPLACE INTO nist_controls "
-        "(id, family_id, family_name, title, statement, guidance, baselines, is_withdrawn) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "(id, family_id, family_name, title, statement, guidance, baselines, is_withdrawn, assessment_objectives, assessment_methods) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         rows,
     )
     conn.commit()

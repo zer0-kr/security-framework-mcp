@@ -173,6 +173,16 @@ class IndexManager:
             CREATE_TABLE_SQL as NIST_NICE_SQL,
             scrape_nist_nice,
         )
+        from security_framework_mcp.collectors.nist_pf import (
+            CREATE_TABLE_SQL as NIST_PF_SQL,
+            FTS_SQL as NIST_PF_FTS,
+            scrape_nist_pf,
+        )
+        from security_framework_mcp.collectors.nist_rmf import (
+            CREATE_TABLE_SQL as NIST_RMF_SQL,
+            FTS_SQL as NIST_RMF_FTS,
+            scrape_nist_rmf,
+        )
 
         output_dir = str(self._config.data_dir)
         os.makedirs(output_dir, exist_ok=True)
@@ -195,7 +205,8 @@ class IndexManager:
                 PROJECTS_SQL, ASVS_SQL, WSTG_SQL, TOP10_SQL, CHEATSHEETS_SQL,
                 API_TOP10_SQL, LLM_TOP10_SQL, PROACTIVE_SQL, MASVS_SQL, CWE_SQL, MCP_TOP10_SQL,
                 NIST_CTRL_SQL, NIST_CSF_SQL, NIST_GLOSS_SQL,
-                NIST_PUB_SQL, NIST_CMVP_SQL, NIST_NICE_SQL, _META_SQL,
+                NIST_PUB_SQL, NIST_CMVP_SQL, NIST_NICE_SQL,
+                NIST_PF_SQL, NIST_RMF_SQL, _META_SQL,
             ]:
                 conn.executescript(sql)
 
@@ -204,6 +215,7 @@ class IndexManager:
                 API_TOP10_FTS, LLM_TOP10_FTS, PROACTIVE_FTS, MASVS_FTS, CWE_FTS, MCP_TOP10_FTS,
                 NIST_CTRL_FTS, NIST_CSF_FTS, NIST_GLOSS_FTS,
                 NIST_PUB_FTS, NIST_CMVP_FTS,
+                NIST_PF_FTS, NIST_RMF_FTS,
             ]:
                 conn.executescript(fts_sql)
 
@@ -225,6 +237,8 @@ class IndexManager:
                 ("nist_publications", scrape_nist_publications),
                 ("nist_cmvp", scrape_nist_cmvp),
                 ("nist_nice", scrape_nist_nice),
+                ("nist_pf", scrape_nist_pf),
+                ("nist_rmf", scrape_nist_rmf),
             ]
 
             results: dict[str, int] = {}
@@ -241,6 +255,7 @@ class IndexManager:
                 "api_top10_fts", "llm_top10_fts", "proactive_controls_fts", "masvs_fts", "cwes_fts", "mcp_top10_fts",
                 "nist_controls_fts", "nist_csf_fts", "nist_glossary_fts",
                 "nist_publications_fts", "nist_cmvp_fts", "nist_nice_fts",
+                "nist_pf_fts", "nist_rmf_fts",
             ]:
                 try:
                     conn.execute(f"INSERT INTO {fts}({fts}) VALUES('rebuild')")
