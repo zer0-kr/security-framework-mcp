@@ -4,7 +4,7 @@ import logging
 import sqlite3
 
 import httpx
-from owasp_mcp.http_utils import fetch_json
+from security_framework_mcp.http_utils import fetch_json
 
 log = logging.getLogger(__name__)
 

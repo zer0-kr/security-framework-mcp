@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from owasp_mcp.collectors.top10 import TOP10_2021
-from owasp_mcp.collectors.api_top10 import API_TOP10_2023
-from owasp_mcp.collectors.llm_top10 import LLM_TOP10_2025
-from owasp_mcp.collectors.proactive_controls import PROACTIVE_CONTROLS_2024
-from owasp_mcp.collectors.mcp_top10 import MCP_TOP10_2025
-from owasp_mcp.collectors.masvs import MASVS_DATA
-from owasp_mcp.collectors.cwe_data import CWE_DATABASE
+from security_framework_mcp.collectors.top10 import TOP10_2021
+from security_framework_mcp.collectors.api_top10 import API_TOP10_2023
+from security_framework_mcp.collectors.llm_top10 import LLM_TOP10_2025
+from security_framework_mcp.collectors.proactive_controls import PROACTIVE_CONTROLS_2024
+from security_framework_mcp.collectors.mcp_top10 import MCP_TOP10_2025
+from security_framework_mcp.collectors.masvs import MASVS_DATA
+from security_framework_mcp.collectors.cwe_data import CWE_DATABASE
 
 
 class TestTop10Data:

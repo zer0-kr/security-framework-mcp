@@ -6,13 +6,13 @@ from typing import Any
 
 from fastmcp import FastMCP
 
-from owasp_mcp import __version__
-from owasp_mcp.config import get_config
-from owasp_mcp.index import IndexManager
-from owasp_mcp.tools.owasp_tools import register_tools
+from security_framework_mcp import __version__
+from security_framework_mcp.config import get_config
+from security_framework_mcp.index import IndexManager
+from security_framework_mcp.tools.owasp_tools import register_tools
 
 mcp = FastMCP(
-    name="owasp-mcp",
+    name="security-framework-mcp",
     instructions=(
         "OWASP MCP server providing unified access to all OWASP projects, "
         "standards, and security guidelines. Tools: search_owasp (cross-source), "
@@ -31,10 +31,10 @@ mcp = FastMCP(
 
 
 def _register_resources(index_mgr: IndexManager) -> None:
-    from owasp_mcp.collectors.top10 import TOP10_2021
-    from owasp_mcp.collectors.api_top10 import API_TOP10_2023
-    from owasp_mcp.collectors.llm_top10 import LLM_TOP10_2025
-    from owasp_mcp.collectors.proactive_controls import PROACTIVE_CONTROLS_2024
+    from security_framework_mcp.collectors.top10 import TOP10_2021
+    from security_framework_mcp.collectors.api_top10 import API_TOP10_2023
+    from security_framework_mcp.collectors.llm_top10 import LLM_TOP10_2025
+    from security_framework_mcp.collectors.proactive_controls import PROACTIVE_CONTROLS_2024
 
     @mcp.resource("owasp://about")
     def about() -> str:
@@ -65,7 +65,7 @@ def _register_resources(index_mgr: IndexManager) -> None:
 
     @mcp.resource("owasp://stats")
     def stats() -> str:
-        from owasp_mcp import db
+        from security_framework_mcp import db
         from pathlib import Path
         info = index_mgr.status()
         if not info["exists"]:
@@ -205,7 +205,7 @@ def main() -> None:
     config = get_config()
     index_mgr = IndexManager(config)
 
-    from owasp_mcp.nvd import NVDClient
+    from security_framework_mcp.nvd import NVDClient
     nvd_api_key = os.environ.get("NVD_API_KEY")
     nvd_client = NVDClient(api_key=nvd_api_key)
 

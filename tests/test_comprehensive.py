@@ -46,11 +46,11 @@ async def call_expect_error(client, name: str, args: dict | None = None) -> str 
 
 async def run_all():
     from fastmcp import Client
-    from owasp_mcp.server import mcp as server_mcp, _register_resources, _register_prompts
-    from owasp_mcp.config import get_config
-    from owasp_mcp.index import IndexManager
-    from owasp_mcp.nvd import NVDClient
-    from owasp_mcp.tools.owasp_tools import register_tools
+    from security_framework_mcp.server import mcp as server_mcp, _register_resources, _register_prompts
+    from security_framework_mcp.config import get_config
+    from security_framework_mcp.index import IndexManager
+    from security_framework_mcp.nvd import NVDClient
+    from security_framework_mcp.tools.owasp_tools import register_tools
 
     config = get_config()
     index_mgr = IndexManager(config)
@@ -762,7 +762,7 @@ async def run_all():
 
         print("\n=== GROUP 38: db.py edge cases ===")
 
-        from owasp_mcp.db import sanitize_fts_query, _tokenize_query
+        from security_framework_mcp.db import sanitize_fts_query, _tokenize_query
 
         ok("TC231 sanitize_empty", sanitize_fts_query("") == "")
         ok("TC232 sanitize_spaces_only", sanitize_fts_query("   ") == "")

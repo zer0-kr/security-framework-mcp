@@ -7,17 +7,17 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-from owasp_mcp import db
-from owasp_mcp.collectors.cheatsheets import fetch_cheatsheet_content
-from owasp_mcp.collectors.top10 import TOP10_2021
-from owasp_mcp.collectors.api_top10 import API_TOP10_2023
-from owasp_mcp.collectors.llm_top10 import LLM_TOP10_2025
-from owasp_mcp.collectors.proactive_controls import PROACTIVE_CONTROLS_2024
+from security_framework_mcp import db
+from security_framework_mcp.collectors.cheatsheets import fetch_cheatsheet_content
+from security_framework_mcp.collectors.top10 import TOP10_2021
+from security_framework_mcp.collectors.api_top10 import API_TOP10_2023
+from security_framework_mcp.collectors.llm_top10 import LLM_TOP10_2025
+from security_framework_mcp.collectors.proactive_controls import PROACTIVE_CONTROLS_2024
 
 if TYPE_CHECKING:
     from fastmcp import FastMCP
-    from owasp_mcp.index import IndexManager
-    from owasp_mcp.nvd import NVDClient
+    from security_framework_mcp.index import IndexManager
+    from security_framework_mcp.nvd import NVDClient
 
 log = logging.getLogger(__name__)
 
@@ -794,7 +794,7 @@ def register_tools(mcp: "FastMCP", index_mgr: "IndexManager", nvd_client: "NVDCl
             sections.append("### API Security — Top 10 2023\n" + "\n".join(items))
 
         if project_type in ("mobile", "full"):
-            from owasp_mcp.collectors.masvs import MASVS_DATA
+            from security_framework_mcp.collectors.masvs import MASVS_DATA
             items = []
             for cat_id, cat_name, controls in MASVS_DATA:
                 for ctrl_id, statement, _ in controls[:2 if level == "basic" else 99]:
@@ -827,7 +827,7 @@ def register_tools(mcp: "FastMCP", index_mgr: "IndexManager", nvd_client: "NVDCl
         header = f"## Security Checklist: {project_type.upper()} ({level})\n\n_{item_count} items_\n"
         return header + "\n\n".join(sections)
 
-    from owasp_mcp.collectors.mcp_top10 import MCP_TOP10_2025
+    from security_framework_mcp.collectors.mcp_top10 import MCP_TOP10_2025
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=True))
     async def search_cve(

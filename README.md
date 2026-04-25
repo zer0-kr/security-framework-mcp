@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">owasp-mcp</h1>
+  <h1 align="center">security-framework-mcp</h1>
   <p align="center">
     <strong>MCP server for unified access to OWASP projects, standards, and security guidelines</strong>
   </p>
@@ -15,7 +15,7 @@
 
 Search and query **1,099+ security data points** through a single MCP interface — **418+ OWASP projects**, **345 ASVS requirements**, **111 WSTG test cases**, **113+ Cheat Sheets**, **Top 10 2021**, **API Security Top 10 2023**, **LLM Top 10 2025**, **MCP Top 10 2025**, **Proactive Controls 2024**, **MASVS**, **39 CWE entries**, and **live NVD/CVE data** — with cross-references, compliance mapping, threat modeling, and MCP security assessment.
 
-## Why owasp-mcp?
+## Why security-framework-mcp?
 
 Individual OWASP resources are scattered across dozens of repositories with different formats. This server unifies them into one searchable interface:
 
@@ -37,7 +37,7 @@ No API keys required for local data. NVD API works without a key (rate-limited) 
 ### Install
 
 ```bash
-pip install git+https://github.com/zer0-kr/owasp-mcp.git
+pip install git+https://github.com/zer0-kr/security-framework-mcp.git
 ```
 
 ### Connect to Claude Desktop
@@ -48,7 +48,7 @@ Add to your `claude_desktop_config.json`:
 {
   "mcpServers": {
     "owasp": {
-      "command": "owasp-mcp"
+      "command": "security-framework-mcp"
     }
   }
 }
@@ -66,7 +66,7 @@ Add to your MCP config:
 ```json
 {
   "owasp": {
-    "command": "owasp-mcp"
+    "command": "security-framework-mcp"
   }
 }
 ```
@@ -81,7 +81,7 @@ Add to your MCP config:
   "mcpServers": {
     "owasp": {
       "type": "stdio",
-      "command": "owasp-mcp"
+      "command": "security-framework-mcp"
     }
   }
 }
@@ -93,7 +93,7 @@ Add to your MCP config:
 <summary><strong>Docker</strong></summary>
 
 ```bash
-docker run --rm -i ghcr.io/zer0-kr/owasp-mcp
+docker run --rm -i ghcr.io/zer0-kr/security-framework-mcp
 ```
 
 </details>
@@ -232,8 +232,8 @@ Structured data endpoints that MCP clients can read for context:
 
 | Environment Variable | Default | Description |
 |---------------------|---------|-------------|
-| `OWASP_MCP_DATA_DIR` | `~/.owasp-mcp` | Local database and cache directory |
-| `OWASP_MCP_UPDATE_INTERVAL` | `604800` (7 days) | Auto-refresh interval in seconds |
+| `SECURITY_MCP_DATA_DIR` | `~/.security-framework-mcp` | Local database and cache directory |
+| `SECURITY_MCP_UPDATE_INTERVAL` | `604800` (7 days) | Auto-refresh interval in seconds |
 | `NVD_API_KEY` | _(none)_ | Optional NVD API key for higher rate limits (50 req/30s vs 5 req/30s) |
 
 ## Architecture
@@ -245,7 +245,7 @@ Structured data endpoints that MCP clients can read for context:
 └──────────────┬──────────────────┘
                │ stdio
 ┌──────────────▼──────────────────┐
-│         owasp-mcp server        │
+│         security-framework-mcp server        │
 │  24 tools · 4 prompts · 6 rsrc │
 ├─────────────────────────────────┤
 │         SQLite + FTS5           │
@@ -264,8 +264,8 @@ Structured data endpoints that MCP clients can read for context:
 ## Development
 
 ```bash
-git clone https://github.com/zer0-kr/owasp-mcp.git
-cd owasp-mcp
+git clone https://github.com/zer0-kr/security-framework-mcp.git
+cd security-framework-mcp
 pip install -e ".[dev]"
 
 # Run unit tests (fast, no network)
@@ -275,13 +275,13 @@ python -m pytest tests/test_unit_db.py tests/test_unit_collectors.py -v
 python tests/test_comprehensive.py
 
 # Run server locally
-python -m owasp_mcp
+python -m security_framework_mcp
 ```
 
 ### Project Structure
 
 ```
-src/owasp_mcp/
+src/security_framework_mcp/
 ├── server.py              # FastMCP entry point + prompts + resources
 ├── config.py              # Environment-based configuration
 ├── db.py                  # SQLite FTS5 query helpers

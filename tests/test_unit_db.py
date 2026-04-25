@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from owasp_mcp.db import sanitize_fts_query, _tokenize_query, _validate_identifier
+from security_framework_mcp.db import sanitize_fts_query, _tokenize_query, _validate_identifier
 import pytest
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 
-from owasp_mcp.http_utils import fetch_json
+from security_framework_mcp.http_utils import fetch_json
 
 log = logging.getLogger(__name__)
 

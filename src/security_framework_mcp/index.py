@@ -11,11 +11,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from owasp_mcp.config import Config
+from security_framework_mcp.config import Config
 
 log = logging.getLogger(__name__)
 
-_DB_FILENAME = "owasp_mcp.db"
+_DB_FILENAME = "security_framework_mcp.db"
 _META_FILENAME = "index_meta.json"
 
 
@@ -89,57 +89,57 @@ class IndexManager:
         await loop.run_in_executor(None, self._build_sync)
 
     def _build_sync(self) -> None:
-        from owasp_mcp.collectors.projects import (
+        from security_framework_mcp.collectors.projects import (
             CREATE_TABLE_SQL as PROJECTS_SQL,
             FTS_SQL as PROJECTS_FTS,
             scrape_projects,
         )
-        from owasp_mcp.collectors.asvs import (
+        from security_framework_mcp.collectors.asvs import (
             CREATE_TABLE_SQL as ASVS_SQL,
             FTS_SQL as ASVS_FTS,
             scrape_asvs,
         )
-        from owasp_mcp.collectors.wstg import (
+        from security_framework_mcp.collectors.wstg import (
             CREATE_TABLE_SQL as WSTG_SQL,
             FTS_SQL as WSTG_FTS,
             scrape_wstg,
         )
-        from owasp_mcp.collectors.top10 import (
+        from security_framework_mcp.collectors.top10 import (
             CREATE_TABLE_SQL as TOP10_SQL,
             FTS_SQL as TOP10_FTS,
             scrape_top10,
         )
-        from owasp_mcp.collectors.cheatsheets import (
+        from security_framework_mcp.collectors.cheatsheets import (
             CREATE_TABLE_SQL as CHEATSHEETS_SQL,
             FTS_SQL as CHEATSHEETS_FTS,
             scrape_cheatsheets,
         )
-        from owasp_mcp.collectors.api_top10 import (
+        from security_framework_mcp.collectors.api_top10 import (
             CREATE_TABLE_SQL as API_TOP10_SQL,
             FTS_SQL as API_TOP10_FTS,
             scrape_api_top10,
         )
-        from owasp_mcp.collectors.llm_top10 import (
+        from security_framework_mcp.collectors.llm_top10 import (
             CREATE_TABLE_SQL as LLM_TOP10_SQL,
             FTS_SQL as LLM_TOP10_FTS,
             scrape_llm_top10,
         )
-        from owasp_mcp.collectors.proactive_controls import (
+        from security_framework_mcp.collectors.proactive_controls import (
             CREATE_TABLE_SQL as PROACTIVE_SQL,
             FTS_SQL as PROACTIVE_FTS,
             scrape_proactive_controls,
         )
-        from owasp_mcp.collectors.masvs import (
+        from security_framework_mcp.collectors.masvs import (
             CREATE_TABLE_SQL as MASVS_SQL,
             FTS_SQL as MASVS_FTS,
             scrape_masvs,
         )
-        from owasp_mcp.collectors.cwe_data import (
+        from security_framework_mcp.collectors.cwe_data import (
             CREATE_TABLE_SQL as CWE_SQL,
             FTS_SQL as CWE_FTS,
             scrape_cwes,
         )
-        from owasp_mcp.collectors.mcp_top10 import (
+        from security_framework_mcp.collectors.mcp_top10 import (
             CREATE_TABLE_SQL as MCP_TOP10_SQL,
             FTS_SQL as MCP_TOP10_FTS,
             scrape_mcp_top10,
@@ -149,7 +149,7 @@ class IndexManager:
         os.makedirs(output_dir, exist_ok=True)
 
         fd, tmp_path = tempfile.mkstemp(
-            suffix=".db", prefix=".owasp_mcp_build_", dir=output_dir
+            suffix=".db", prefix=".security_framework_mcp_build_", dir=output_dir
         )
         os.close(fd)
 
