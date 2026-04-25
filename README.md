@@ -67,7 +67,7 @@ Claude Desktop (`claude_desktop_config.json`):
 |--------|---------|
 | SP 800-53 Rev. 5 Controls (+ 53A assessments + 53B baselines) | 1,196 |
 | CSF 2.0 | 225 |
-| Privacy Framework 1.0 | 92 |
+| PF 1.0 | 92 |
 | SP 800-37 RMF | 7 steps |
 | Publications (SP 800, FIPS, IR, CSWP) | 613 |
 | Glossary | 39 |
