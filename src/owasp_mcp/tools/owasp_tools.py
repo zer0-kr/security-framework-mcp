@@ -213,11 +213,12 @@ def register_tools(mcp: "FastMCP", index_mgr: "IndexManager", nvd_client: "NVDCl
 
         record = db.get_by_id(db_path, "projects", "name", name)
         if record is None:
+            escaped = name.replace("%", "\\%").replace("_", "\\_")
             conn = db.get_connection(db_path)
             try:
                 row = conn.execute(
-                    "SELECT * FROM projects WHERE lower(name) = lower(?) OR lower(title) LIKE lower(?)",
-                    (name, f"%{name}%"),
+                    "SELECT * FROM projects WHERE lower(name) = lower(?) OR lower(title) LIKE lower(?) ESCAPE '\\'",
+                    (name, f"%{escaped}%"),
                 ).fetchone()
                 record = dict(row) if row else None
             finally:
@@ -432,11 +433,12 @@ def register_tools(mcp: "FastMCP", index_mgr: "IndexManager", nvd_client: "NVDCl
 
         record = db.get_by_id(db_path, "cheatsheets", "name", name)
         if record is None:
+            escaped = name.replace("%", "\\%").replace("_", "\\_")
             conn = db.get_connection(db_path)
             try:
                 row = conn.execute(
-                    "SELECT * FROM cheatsheets WHERE lower(name) LIKE lower(?)",
-                    (f"%{name}%",),
+                    "SELECT * FROM cheatsheets WHERE lower(name) LIKE lower(?) ESCAPE '\\'",
+                    (f"%{escaped}%",),
                 ).fetchone()
                 record = dict(row) if row else None
             finally:
