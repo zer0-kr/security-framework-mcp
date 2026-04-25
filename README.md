@@ -13,7 +13,7 @@
 
 ---
 
-Search and query **1,098+ security data points** through a single MCP interface — **418+ OWASP projects**, **345 ASVS requirements**, **111 WSTG test cases**, **113+ Cheat Sheets**, **Top 10 2021**, **API Security Top 10 2023**, **LLM Top 10 2025**, **MCP Top 10 2025**, **Proactive Controls 2024**, **MASVS**, **38 CWE entries**, and **live NVD/CVE data** — with cross-references, compliance mapping, threat modeling, and MCP security assessment.
+Search and query **1,099+ security data points** through a single MCP interface — **418+ OWASP projects**, **345 ASVS requirements**, **111 WSTG test cases**, **113+ Cheat Sheets**, **Top 10 2021**, **API Security Top 10 2023**, **LLM Top 10 2025**, **MCP Top 10 2025**, **Proactive Controls 2024**, **MASVS**, **39 CWE entries**, and **live NVD/CVE data** — with cross-references, compliance mapping, threat modeling, and MCP security assessment.
 
 ## Why owasp-mcp?
 
@@ -111,7 +111,7 @@ docker run --rm -i ghcr.io/zer0-kr/owasp-mcp
 | **MCP Top 10 2025** | 10 | [OWASP MCP Top 10](https://owasp.org/www-project-mcp-top-10/) |
 | **Proactive Controls 2024** | 10 | [OWASP Proactive Controls](https://owasp.org/www-project-proactive-controls/) |
 | **MASVS** | 23 | [OWASP/owasp-masvs](https://github.com/OWASP/owasp-masvs) |
-| **CWE Database** | 38 | [MITRE CWE](https://cwe.mitre.org/) |
+| **CWE Database** | 39 | [MITRE CWE](https://cwe.mitre.org/) |
 | **Cheat Sheets** | 113+ | [OWASP/CheatSheetSeries](https://github.com/OWASP/CheatSheetSeries) |
 | **NVD/CVE** | Live | [NVD API 2.0](https://nvd.nist.gov/developers/vulnerabilities) |
 
@@ -298,7 +298,7 @@ src/owasp_mcp/
 │   ├── mcp_top10.py       # MCP Top 10 2025
 │   ├── proactive_controls.py  # Proactive Controls 2024
 │   ├── masvs.py           # MASVS mobile security
-│   ├── cwe_data.py        # CWE database (38 entries)
+│   ├── cwe_data.py        # CWE database (39 entries)
 │   └── cheatsheets.py     # Cheat Sheet index + on-demand content
 └── tools/
     └── owasp_tools.py     # All 24 MCP tool definitions
