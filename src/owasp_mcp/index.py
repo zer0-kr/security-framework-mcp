@@ -139,6 +139,11 @@ class IndexManager:
             FTS_SQL as CWE_FTS,
             scrape_cwes,
         )
+        from owasp_mcp.collectors.mcp_top10 import (
+            CREATE_TABLE_SQL as MCP_TOP10_SQL,
+            FTS_SQL as MCP_TOP10_FTS,
+            scrape_mcp_top10,
+        )
 
         output_dir = str(self._config.data_dir)
         os.makedirs(output_dir, exist_ok=True)
@@ -159,13 +164,13 @@ class IndexManager:
 
             for sql in [
                 PROJECTS_SQL, ASVS_SQL, WSTG_SQL, TOP10_SQL, CHEATSHEETS_SQL,
-                API_TOP10_SQL, LLM_TOP10_SQL, PROACTIVE_SQL, MASVS_SQL, CWE_SQL, _META_SQL,
+                API_TOP10_SQL, LLM_TOP10_SQL, PROACTIVE_SQL, MASVS_SQL, CWE_SQL, MCP_TOP10_SQL, _META_SQL,
             ]:
                 conn.executescript(sql)
 
             for fts_sql in [
                 PROJECTS_FTS, ASVS_FTS, WSTG_FTS, TOP10_FTS, CHEATSHEETS_FTS,
-                API_TOP10_FTS, LLM_TOP10_FTS, PROACTIVE_FTS, MASVS_FTS, CWE_FTS,
+                API_TOP10_FTS, LLM_TOP10_FTS, PROACTIVE_FTS, MASVS_FTS, CWE_FTS, MCP_TOP10_FTS,
             ]:
                 conn.executescript(fts_sql)
 
@@ -180,6 +185,7 @@ class IndexManager:
                 ("proactive_controls", scrape_proactive_controls),
                 ("masvs", scrape_masvs),
                 ("cwes", scrape_cwes),
+                ("mcp_top10", scrape_mcp_top10),
             ]
 
             results: dict[str, int] = {}
@@ -193,7 +199,7 @@ class IndexManager:
 
             for fts in [
                 "projects_fts", "asvs_fts", "wstg_fts", "top10_fts", "cheatsheets_fts",
-                "api_top10_fts", "llm_top10_fts", "proactive_controls_fts", "masvs_fts", "cwes_fts",
+                "api_top10_fts", "llm_top10_fts", "proactive_controls_fts", "masvs_fts", "cwes_fts", "mcp_top10_fts",
             ]:
                 try:
                     conn.execute(f"INSERT INTO {fts}({fts}) VALUES('rebuild')")

@@ -17,6 +17,7 @@ from owasp_mcp.collectors.proactive_controls import PROACTIVE_CONTROLS_2024
 if TYPE_CHECKING:
     from fastmcp import FastMCP
     from owasp_mcp.index import IndexManager
+    from owasp_mcp.nvd import NVDClient
 
 log = logging.getLogger(__name__)
 
@@ -106,7 +107,7 @@ _FORMATTERS = {
 }
 
 
-def register_tools(mcp: "FastMCP", index_mgr: "IndexManager") -> None:
+def register_tools(mcp: "FastMCP", index_mgr: "IndexManager", nvd_client: "NVDClient | None" = None) -> None:
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False))
     async def update_database() -> str:
@@ -745,6 +746,345 @@ def register_tools(mcp: "FastMCP", index_mgr: "IndexManager") -> None:
     ) -> str:
         """Generate a security testing checklist based on project type and depth level."""
         db_path = await index_mgr.ensure_index()
+
+        limit_map = {"basic": 8, "standard": 15, "comprehensive": 30}
+        per_section = limit_map[level]
+
+        sections: list[str] = []
+        item_count = 0
+
+        if project_type in ("web", "full"):
+            items = []
+            for t10 in TOP10_2021[:per_section]:
+                items.append(f"- [ ] **{t10['id']}** {t10['name']}")
+                item_count += 1
+            sections.append("### Web Application — Top 10 2021\n" + "\n".join(items))
+
+            wstg_cats = ["WSTG-INFO", "WSTG-CONF", "WSTG-IDNT", "WSTG-ATHN", "WSTG-ATHZ", "WSTG-SESS", "WSTG-INPV", "WSTG-CLNT"]
+            wstg_items = []
+            for cat in wstg_cats[:per_section]:
+                results, _ = db.get_all(db_path, "wstg", filters={"category_id": cat}, limit=3)
+                for r in results:
+                    wstg_items.append(f"- [ ] **{r['test_id']}** {r['name']}")
+                    item_count += 1
+            if wstg_items:
+                sections.append("### Web — Testing (WSTG)\n" + "\n".join(wstg_items[:per_section]))
+
+        if project_type in ("api", "full"):
+            items = []
+            for a in API_TOP10_2023[:per_section]:
+                items.append(f"- [ ] **{a['id']}** {a['name']}")
+                item_count += 1
+            sections.append("### API Security — Top 10 2023\n" + "\n".join(items))
+
+        if project_type in ("mobile", "full"):
+            from owasp_mcp.collectors.masvs import MASVS_DATA
+            items = []
+            for cat_id, cat_name, controls in MASVS_DATA:
+                for ctrl_id, statement, _ in controls[:2 if level == "basic" else 99]:
+                    items.append(f"- [ ] **{ctrl_id}** {statement}")
+                    item_count += 1
+            sections.append("### Mobile Security — MASVS\n" + "\n".join(items[:per_section]))
+
+        if project_type in ("llm", "full"):
+            items = []
+            for l in LLM_TOP10_2025[:per_section]:
+                items.append(f"- [ ] **{l['id']}** {l['name']}")
+                item_count += 1
+            sections.append("### AI/LLM Security — Top 10 2025\n" + "\n".join(items))
+
+        asvs_items = []
+        asvs_level = "1" if level == "basic" else "2" if level == "standard" else "3"
+        results, _ = db.get_all(db_path, "asvs", filters={"level": asvs_level}, limit=per_section)
+        for r in results:
+            asvs_items.append(f"- [ ] **{r['req_id']}** {r['req_description'][:120]}")
+            item_count += 1
+        if asvs_items:
+            sections.append(f"### Verification — ASVS Level {asvs_level}\n" + "\n".join(asvs_items))
+
+        pc_items = []
+        for pc in PROACTIVE_CONTROLS_2024[:per_section]:
+            pc_items.append(f"- [ ] **{pc['id']}** {pc['name']}")
+            item_count += 1
+        sections.append("### Defensive Controls — Proactive Controls 2024\n" + "\n".join(pc_items))
+
+        header = f"## Security Checklist: {project_type.upper()} ({level})\n\n_{item_count} items_\n"
+        return header + "\n\n".join(sections)
+
+    from owasp_mcp.collectors.mcp_top10 import MCP_TOP10_2025
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=True))
+    async def search_cve(
+        keyword: Annotated[str | None, Field(description="Search keyword, e.g. 'log4j'", max_length=500)] = None,
+        cwe_id: Annotated[str | None, Field(description="Filter by CWE ID, e.g. 'CWE-79'")] = None,
+        severity: Annotated[
+            Literal["CRITICAL", "HIGH", "MEDIUM", "LOW"] | None,
+            Field(description="Filter by CVSS v3 severity"),
+        ] = None,
+        limit: Annotated[int, Field(ge=1, le=20)] = 5,
+    ) -> str:
+        """Search the live NVD database for CVE vulnerabilities. Requires internet access."""
+        if not keyword and not cwe_id and not severity:
+            raise ToolError("Provide at least one of: keyword, cwe_id, or severity")
+
+        if nvd_client is None:
+            raise ToolError("NVD client not configured")
+
+        try:
+            data = await nvd_client.search_cves(
+                keyword=keyword, cwe_id=cwe_id, severity=severity, results_per_page=limit,
+            )
+        except Exception as exc:
+            raise ToolError(f"NVD API error: {exc}") from exc
+
+        vulns = data.get("vulnerabilities", [])
+        total = data.get("totalResults", len(vulns))
+
+        if not vulns:
+            return f"No CVEs found for the given criteria."
+
+        lines = [f"## NVD Search Results ({total} total, showing {len(vulns)})\n"]
+        for v in vulns:
+            cve = v.get("cve", v)
+            cve_id_str = cve.get("id", "?")
+            desc = next(
+                (d.get("value", "") for d in cve.get("descriptions", []) if d.get("lang") == "en"),
+                "",
+            )
+            if len(desc) > 200:
+                desc = desc[:197] + "..."
+
+            score = "?"
+            for bucket in ("cvssMetricV31", "cvssMetricV30"):
+                metrics = cve.get("metrics", {}).get(bucket, [])
+                if metrics:
+                    cvss = metrics[0].get("cvssData", {})
+                    score = f"{cvss.get('baseScore', '?')} {cvss.get('baseSeverity', '')}"
+                    break
+
+            lines.append(f"- **{cve_id_str}** (CVSS: {score}) — {desc}")
+
+        return "\n".join(lines)
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=True))
+    async def get_cve_detail(
+        cve_id: Annotated[str, Field(description="CVE ID, e.g. 'CVE-2024-1234'", pattern=r"^[Cc][Vv][Ee]-\d{4}-\d{4,}$")],
+    ) -> str:
+        """Fetch detailed information for a specific CVE from the live NVD database."""
+        if nvd_client is None:
+            raise ToolError("NVD client not configured")
+
+        try:
+            data = await nvd_client.get_cve(cve_id)
+        except Exception as exc:
+            raise ToolError(f"NVD API error: {exc}") from exc
+
+        vulns = data.get("vulnerabilities", [])
+        if not vulns:
+            return f"CVE '{cve_id}' not found."
+
+        cve = vulns[0].get("cve", vulns[0])
+        cve_id_str = cve.get("id", cve_id)
+
+        lines = [f"# {cve_id_str}"]
+
+        meta = []
+        for key, label in [("published", "Published"), ("lastModified", "Modified"), ("vulnStatus", "Status")]:
+            if cve.get(key):
+                meta.append(f"{label}: {str(cve[key])[:10]}")
+        if meta:
+            lines.append(" | ".join(meta))
+        lines.append("")
+
+        for desc in cve.get("descriptions", []):
+            if desc.get("lang") == "en":
+                lines.extend(["## Description", desc.get("value", ""), ""])
+                break
+
+        for bucket in ("cvssMetricV31", "cvssMetricV30"):
+            metrics = cve.get("metrics", {}).get(bucket, [])
+            if metrics:
+                cvss = metrics[0].get("cvssData", {})
+                lines.append(f"**CVSS:** {cvss.get('baseScore', '?')} {cvss.get('baseSeverity', '')} ({cvss.get('vectorString', '')})")
+                break
+
+        weaknesses = []
+        for w in cve.get("weaknesses", []):
+            for d in w.get("description", []):
+                if d.get("lang") == "en" and d.get("value"):
+                    weaknesses.append(d["value"])
+        if weaknesses:
+            lines.append(f"**Weaknesses:** {', '.join(sorted(set(weaknesses)))}")
+
+        refs = [r.get("url") for r in cve.get("references", []) if r.get("url")]
+        if refs:
+            lines.append("\n## References")
+            lines.extend(f"- {url}" for url in refs[:10])
+
+        return "\n".join(lines)
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
+    async def get_mcp_top10(
+        id: Annotated[
+            str | None,
+            Field(description="MCP Top 10 item ID, e.g. 'MCP01:2025'. Omit to list all."),
+        ] = None,
+    ) -> str:
+        """Get OWASP Top 10 for MCP Servers 2025 — security risks specific to MCP deployments."""
+        if id is None:
+            lines = ["## OWASP Top 10 for MCP Servers — 2025\n"]
+            for item in MCP_TOP10_2025:
+                lines.append(f"- **{item['id']}** — {item['name']}")
+            return "\n".join(lines)
+
+        id_upper = id.strip().upper()
+        item = next((i for i in MCP_TOP10_2025 if i["id"] == id_upper), None)
+        if item is None:
+            return f"MCP Top 10 item '{id}' not found. Valid IDs: MCP01:2025 through MCP10:2025."
+
+        return "\n".join([
+            f"# {item['id']} — {item['name']}",
+            "",
+            "## Description",
+            item["description"],
+            "",
+            "## Impact",
+            item["impact"],
+            "",
+            f"**Reference:** {MCP_TOP10_2025[0]['id']} series — https://owasp.org/www-project-mcp-top-10/",
+        ])
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
+    async def assess_mcp_security(
+        description: Annotated[str, Field(description="Describe your MCP server setup: what tools it exposes, how auth works, what data it accesses, how it's deployed", max_length=2000)],
+    ) -> str:
+        """Assess an MCP server deployment against the OWASP MCP Top 10 security risks."""
+        desc_lower = description.lower()
+
+        checks: list[tuple[str, str, str, bool]] = [
+            ("MCP01", "Token Mismanagement", "Tokens/secrets in config, env vars, or context", any(kw in desc_lower for kw in ["token", "secret", "key", "credential", "password", "env"])),
+            ("MCP02", "Scope Creep", "Over-privileged agents with broad permissions", any(kw in desc_lower for kw in ["admin", "all permission", "broad access", "full access", "root"])),
+            ("MCP03", "Tool Poisoning", "Untrusted third-party tools or plugins", any(kw in desc_lower for kw in ["plugin", "third-party", "marketplace", "community", "external tool"])),
+            ("MCP04", "Supply Chain", "Unverified dependencies or SDKs", any(kw in desc_lower for kw in ["npm", "pip", "dependency", "package", "library", "sdk"])),
+            ("MCP05", "Command Injection", "Tools that execute system commands", any(kw in desc_lower for kw in ["shell", "exec", "command", "subprocess", "os.", "system("])),
+            ("MCP06", "Intent Flow Subversion", "RAG or context from untrusted sources", any(kw in desc_lower for kw in ["rag", "retrieval", "context", "document", "embedding", "vector"])),
+            ("MCP07", "Insufficient Auth", "Missing or weak authentication", any(kw in desc_lower for kw in ["no auth", "open", "public", "unauthenticated", "anyone"]) or not any(kw in desc_lower for kw in ["auth", "token", "oauth", "api key"])),
+            ("MCP08", "Lack of Audit", "No logging or monitoring", not any(kw in desc_lower for kw in ["log", "audit", "monitor", "trace", "telemetry"])),
+            ("MCP09", "Shadow Servers", "Unofficial or unmanaged deployments", any(kw in desc_lower for kw in ["test", "experiment", "dev server", "local", "prototype", "poc"])),
+            ("MCP10", "Context Over-Sharing", "Shared context across users/sessions", any(kw in desc_lower for kw in ["shared", "multi-user", "multi-tenant", "session", "persistent context"])),
+        ]
+
+        risk_items: list[str] = []
+        safe_items: list[str] = []
+
+        for mcp_id, name, indicator, flagged in checks:
+            item = next(i for i in MCP_TOP10_2025 if i["id"].startswith(mcp_id))
+            if flagged:
+                risk_items.append(f"- **{item['id']} {name}** — {indicator}\n  _{item['description'][:150]}_")
+            else:
+                safe_items.append(f"- **{item['id']} {name}** — No indicators detected")
+
+        lines = [f"## MCP Security Assessment\n"]
+        lines.append(f"_Assessed against OWASP MCP Top 10 (2025)_\n")
+
+        if risk_items:
+            lines.append(f"### Potential Risks ({len(risk_items)} found)\n")
+            lines.extend(risk_items)
+        else:
+            lines.append("### No risks detected from description alone\n")
+
+        if safe_items:
+            lines.append(f"\n### No Indicators ({len(safe_items)} items)\n")
+            lines.extend(safe_items)
+
+        lines.append(f"\n### Recommendations")
+        lines.append("1. Use `get_mcp_top10` for detailed guidance on each identified risk")
+        lines.append("2. Implement authentication (MCP07) and audit logging (MCP08) as baseline controls")
+        lines.append("3. Pin and verify all tool/plugin dependencies (MCP03, MCP04)")
+        lines.append("4. Scope agent permissions to minimum required (MCP02)")
+
+        return "\n".join(lines)
+
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, idempotentHint=True))
+    async def threat_model(
+        system: Annotated[str, Field(description="System description: components, data flows, trust boundaries, and technologies", max_length=3000)],
+        methodology: Annotated[
+            Literal["stride", "summary"],
+            Field(description="STRIDE for detailed per-category analysis, summary for quick overview"),
+        ] = "stride",
+    ) -> str:
+        """Generate a STRIDE-based threat model for a system using OWASP data for mitigations."""
+        sys_lower = system.lower()
+
+        _STRIDE = [
+            ("Spoofing", "Pretending to be something or someone else",
+             ["auth", "login", "identity", "credential", "session", "token", "certificate"],
+             ["A07:2021 (Auth Failures)", "ASVS V3 (Session Mgmt)", "Proactive Control C7 (Secure Digital Identities)"],
+             "get_asvs chapter=V3, get_proactive_controls id=C7, get_cheatsheet name=Authentication"),
+
+            ("Tampering", "Modifying data or code without authorization",
+             ["database", "file", "api", "input", "form", "upload", "storage", "write"],
+             ["A03:2021 (Injection)", "A08:2021 (Integrity Failures)", "ASVS V1 (Encoding)", "Proactive Control C3 (Validate Input)"],
+             "get_asvs chapter=V1, get_proactive_controls id=C3, get_cheatsheet name=Input Validation"),
+
+            ("Repudiation", "Denying having performed an action",
+             ["transaction", "payment", "audit", "log", "action", "event", "order"],
+             ["A09:2021 (Logging Failures)", "Proactive Control C9 (Security Logging)", "WSTG-BUSL (Business Logic)"],
+             "get_proactive_controls id=C9, get_wstg category=WSTG-BUSL"),
+
+            ("Information Disclosure", "Exposing data to unauthorized parties",
+             ["sensitive", "pii", "password", "secret", "key", "personal", "health", "financial", "api key"],
+             ["A02:2021 (Crypto Failures)", "A01:2021 (Access Control)", "ASVS V6 (Stored Crypto)", "Proactive Control C2 (Cryptography)"],
+             "get_asvs chapter=V6, get_proactive_controls id=C2, get_cheatsheet name=Cryptographic Storage"),
+
+            ("Denial of Service", "Making a system unavailable",
+             ["api", "public", "endpoint", "rate", "upload", "search", "query", "resource"],
+             ["API4:2023 (Unrestricted Resource Consumption)", "ASVS V2 (Anti-automation)", "Proactive Control C5 (Secure Defaults)"],
+             "get_api_top10 id=API4:2023, get_asvs chapter=V2"),
+
+            ("Elevation of Privilege", "Gaining unauthorized access or capabilities",
+             ["role", "admin", "permission", "privilege", "access control", "authorization", "rbac"],
+             ["A01:2021 (Access Control)", "API5:2023 (Broken Function Level Auth)", "ASVS V4 (Access Control)", "Proactive Control C1 (Access Control)"],
+             "get_asvs chapter=V4, get_proactive_controls id=C1, get_cheatsheet name=Access Control"),
+        ]
+
+        sections: list[str] = []
+
+        for category, desc, keywords, references, tools_hint in _STRIDE:
+            relevance = sum(1 for kw in keywords if kw in sys_lower)
+            if methodology == "summary" and relevance == 0:
+                continue
+
+            risk = "High" if relevance >= 3 else "Medium" if relevance >= 1 else "Low"
+            lines = [f"### {category} — {desc}"]
+            lines.append(f"**Risk Level:** {risk} ({relevance} indicators matched)")
+            lines.append(f"**OWASP References:** {', '.join(references)}")
+            lines.append(f"**Recommended Tools:** `{tools_hint}`")
+            sections.append("\n".join(lines))
+
+        has_llm = any(kw in sys_lower for kw in ["llm", "ai", "gpt", "claude", "model", "agent", "rag"])
+        has_mcp = any(kw in sys_lower for kw in ["mcp", "model context protocol", "tool server"])
+        has_mobile = any(kw in sys_lower for kw in ["mobile", "ios", "android", "app"])
+
+        if has_llm:
+            sections.append("### AI/LLM-Specific Threats\n**Risk Level:** High\n"
+                          "**Key Risks:** Prompt Injection (LLM01), Sensitive Info Disclosure (LLM02), Excessive Agency (LLM06)\n"
+                          "**Recommended:** `get_llm_top10`")
+        if has_mcp:
+            sections.append("### MCP-Specific Threats\n**Risk Level:** High\n"
+                          "**Key Risks:** Tool Poisoning (MCP03), Insufficient Auth (MCP07), Context Injection (MCP10)\n"
+                          "**Recommended:** `get_mcp_top10`, `assess_mcp_security`")
+        if has_mobile:
+            sections.append("### Mobile-Specific Threats\n**Risk Level:** Medium\n"
+                          "**Key Areas:** MASVS-STORAGE, MASVS-CRYPTO, MASVS-NETWORK, MASVS-AUTH\n"
+                          "**Recommended:** `get_masvs`")
+
+        header = f"## STRIDE Threat Model\n\n_System: {system[:100]}{'...' if len(system) > 100 else ''}_\n"
+        if not sections:
+            return f"{header}\nNo significant threats identified from the description. Provide more detail about components, data flows, and trust boundaries."
+
+        return header + "\n\n".join(sections)
+
 
         limit_map = {"basic": 8, "standard": 15, "comprehensive": 30}
         per_section = limit_map[level]

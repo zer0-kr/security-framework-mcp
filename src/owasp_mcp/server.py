@@ -196,12 +196,17 @@ def _register_prompts() -> None:
 
 
 def main() -> None:
+    import os
     logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 
     config = get_config()
     index_mgr = IndexManager(config)
 
-    register_tools(mcp, index_mgr)
+    from owasp_mcp.nvd import NVDClient
+    nvd_api_key = os.environ.get("NVD_API_KEY")
+    nvd_client = NVDClient(api_key=nvd_api_key)
+
+    register_tools(mcp, index_mgr, nvd_client=nvd_client)
     _register_resources(index_mgr)
     _register_prompts()
 

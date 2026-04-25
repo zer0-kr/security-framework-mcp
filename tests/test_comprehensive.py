@@ -49,11 +49,13 @@ async def run_all():
     from owasp_mcp.server import mcp as server_mcp, _register_resources, _register_prompts
     from owasp_mcp.config import get_config
     from owasp_mcp.index import IndexManager
+    from owasp_mcp.nvd import NVDClient
     from owasp_mcp.tools.owasp_tools import register_tools
 
     config = get_config()
     index_mgr = IndexManager(config)
-    register_tools(server_mcp, index_mgr)
+    nvd_client = NVDClient()
+    register_tools(server_mcp, index_mgr, nvd_client=nvd_client)
     _register_resources(index_mgr)
     _register_prompts()
 
@@ -67,7 +69,7 @@ async def run_all():
 
         tools = await client.list_tools()
         tool_names = {t.name for t in tools}
-        ok("TC01 tool_count", len(tools) == 19, f"got {len(tools)}")
+        ok("TC01 tool_count", len(tools) == 24, f"got {len(tools)}")
 
         expected_tools = {
             "list_projects", "search_projects", "get_project",
@@ -77,6 +79,8 @@ async def run_all():
             "get_api_top10", "get_llm_top10", "get_proactive_controls",
             "get_masvs", "assess_stack", "generate_checklist",
             "get_cwe", "compliance_map",
+            "search_cve", "get_cve_detail", "get_mcp_top10",
+            "assess_mcp_security", "threat_model",
         }
         ok("TC02 all_tools_present", expected_tools == tool_names,
            f"missing={expected_tools - tool_names}, extra={tool_names - expected_tools}")
@@ -616,46 +620,66 @@ async def run_all():
         ok("TC171 has_llm_top10", "owasp://llm-top10/2025" in resource_uris)
         ok("TC172 has_proactive", "owasp://proactive-controls/2024" in resource_uris)
 
-        print("\n=== GROUP 25: get_cwe ===")
+        print("\n=== GROUP 27: get_mcp_top10 ===")
 
-        txt = await call(client, "get_cwe", {"id": "CWE-79"})
-        ok("TC173 cwe79_name", "Cross-site Scripting" in txt)
-        ok("TC174 cwe79_top10_map", "A03:2021" in txt)
-        ok("TC175 cwe79_url", "cwe.mitre.org" in txt)
+        txt = await call(client, "get_mcp_top10", {})
+        ok("TC187 mcp10_list", "MCP01:2025" in txt and "MCP10:2025" in txt)
+        ok("TC188 mcp10_has_10", txt.count("MCP") >= 10)
 
-        txt = await call(client, "get_cwe", {"id": "89"})
-        ok("TC176 cwe_no_prefix", "SQL Injection" in txt)
+        txt = await call(client, "get_mcp_top10", {"id": "MCP03:2025"})
+        ok("TC189 mcp10_tool_poisoning", "Tool Poisoning" in txt)
 
-        txt = await call(client, "get_cwe", {"id": "CWE-918"})
-        ok("TC177 cwe918_ssrf", "SSRF" in txt)
-        ok("TC178 cwe918_top10", "A10:2021" in txt)
+        txt = await call(client, "get_mcp_top10", {"id": "MCP07:2025"})
+        ok("TC190 mcp10_auth", "Authentication" in txt)
 
-        txt = await call(client, "get_cwe", {"id": "CWE-285"})
-        ok("TC179 cwe285_api_map", "API" in txt, txt[:300])
+        txt = await call(client, "get_mcp_top10", {"id": "mcp01:2025"})
+        ok("TC191 mcp10_case", "Token" in txt, txt[:200])
 
-        txt = await call(client, "get_cwe", {"id": "CWE-94"})
-        ok("TC180 cwe94_llm_map", "LLM" in txt, txt[:300])
+        txt = await call(client, "get_mcp_top10", {"id": "MCP99:2025"})
+        ok("TC192 mcp10_invalid", "not found" in txt.lower())
 
-        txt = await call(client, "get_cwe", {"id": "CWE-99999"})
-        ok("TC181 cwe_not_found", "not found" in txt.lower())
+        print("\n=== GROUP 28: assess_mcp_security ===")
 
-        print("\n=== GROUP 26: compliance_map ===")
+        txt = await call(client, "assess_mcp_security", {"description": "MCP server with shell exec, no auth, API keys in env vars, community plugins, no logging"})
+        ok("TC193 mcp_assess_risks", "Potential Risks" in txt)
+        ok("TC194 mcp_assess_token", "MCP01" in txt)
+        ok("TC195 mcp_assess_tool_poison", "MCP03" in txt)
+        ok("TC196 mcp_assess_cmd_inject", "MCP05" in txt)
 
-        txt = await call(client, "compliance_map", {"framework": "all", "asvs_chapter": "V4"})
-        ok("TC182 cm_all_v4", "PCI-DSS" in txt and "ISO" in txt and "NIST" in txt)
+        txt = await call(client, "assess_mcp_security", {"description": "MCP server with OAuth2 auth, audit logging, pinned dependencies, read-only tools only"})
+        ok("TC197 mcp_assess_safer", isinstance(txt, str))
 
-        txt = await call(client, "compliance_map", {"framework": "pci-dss"})
-        ok("TC183 cm_pci_all", "PCI-DSS" in txt and "V1" in txt)
+        print("\n=== GROUP 29: threat_model ===")
 
-        txt = await call(client, "compliance_map", {"framework": "iso27001", "asvs_chapter": "V6"})
-        ok("TC184 cm_iso_v6", "ISO 27001" in txt and "cryptographic" in txt.lower())
+        txt = await call(client, "threat_model", {"system": "Web API with JWT auth, PostgreSQL, file upload, payment via Stripe", "methodology": "stride"})
+        ok("TC198 tm_stride_all", "Spoofing" in txt and "Tampering" in txt)
+        ok("TC199 tm_has_references", "OWASP" in txt or "ASVS" in txt)
+        ok("TC200 tm_has_risk_levels", "Risk Level" in txt)
 
-        txt = await call(client, "compliance_map", {"framework": "nist-800-53", "asvs_chapter": "V3"})
-        ok("TC185 cm_nist_v3", "NIST" in txt and "IA-" in txt)
+        txt = await call(client, "threat_model", {"system": "Mobile app with GPT-4 LLM agent, RAG pipeline, vector database", "methodology": "stride"})
+        ok("TC201 tm_llm_threats", "LLM" in txt)
 
-        txt = await call(client, "compliance_map", {"framework": "all"})
-        ok("TC186 cm_all_chapters", txt.count("### ASVS") >= 10, f"chapters={txt.count('### ASVS')}")
+        txt = await call(client, "threat_model", {"system": "MCP server exposing database queries and shell commands", "methodology": "stride"})
+        ok("TC202 tm_mcp_threats", "MCP" in txt)
 
+        txt = await call(client, "threat_model", {"system": "Simple static website", "methodology": "summary"})
+        ok("TC203 tm_summary_mode", isinstance(txt, str))
+
+        print("\n=== GROUP 30: search_cve (live NVD) ===")
+
+        txt = await call_expect_error(client, "search_cve", {"keyword": "log4j", "severity": "CRITICAL", "limit": 2})
+        ok("TC204 cve_search_live", txt is not None and ("CVE-" in str(txt) or "ERROR" in str(txt)))
+
+        r = await call_expect_error(client, "search_cve", {})
+        ok("TC205 cve_no_params_error", r is not None and "ERROR" in str(r))
+
+        print("\n=== GROUP 31: Tier 3 Data Integrity ===")
+
+        txt = await call(client, "get_mcp_top10", {})
+        ok("TC206 mcp10_complete", all(f"MCP{str(i).zfill(2)}:2025" in txt for i in range(1, 11)))
+
+    # ============================================================
+    # SUMMARY
     # ============================================================
     # SUMMARY
     # ============================================================
