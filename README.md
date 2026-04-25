@@ -268,7 +268,10 @@ git clone https://github.com/zer0-kr/owasp-mcp.git
 cd owasp-mcp
 pip install -e ".[dev]"
 
-# Run tests (224 test cases across 38 groups)
+# Run unit tests (fast, no network)
+python -m pytest tests/test_unit_db.py tests/test_unit_collectors.py -v
+
+# Run full integration tests (270 total: 46 unit + 224 integration)
 python tests/test_comprehensive.py
 
 # Run server locally
@@ -284,6 +287,7 @@ src/owasp_mcp/
 ├── db.py                  # SQLite FTS5 query helpers
 ├── index.py               # IndexManager — builds DB from collectors
 ├── nvd.py                 # NVD API client (live CVE search)
+├── http_utils.py          # HTTP fetch with exponential backoff retry
 ├── collectors/
 │   ├── projects.py        # 418+ project metadata
 │   ├── asvs.py            # ASVS 5.0 flat JSON
@@ -306,7 +310,7 @@ Contributions are welcome. Please open an issue first to discuss what you'd like
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feat/my-feature`)
-3. Run the test suite (`python tests/test_comprehensive.py`)
+3. Run tests (`python -m pytest tests/ -v` or `python tests/test_comprehensive.py`)
 4. Commit your changes
 5. Open a Pull Request
 
