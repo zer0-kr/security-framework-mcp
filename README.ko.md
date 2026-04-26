@@ -37,6 +37,12 @@ Claude Desktop (`claude_desktop_config.json`):
 }
 ```
 
+Claude CLI (Claude Code):
+
+```bash
+claude mcp add security -- security-framework-mcp
+```
+
 첫 실행 시 로컬 데이터베이스가 자동으로 생성됩니다 (~15-20초). 이후 주 1회 자동 갱신.
 
 ## 데이터 소스 (21개 로컬 + 2개 실시간)

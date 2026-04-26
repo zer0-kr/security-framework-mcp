@@ -37,6 +37,12 @@ Claude Desktop (`claude_desktop_config.json`):
 }
 ```
 
+Claude CLI (Claude Code):
+
+```bash
+claude mcp add security -- security-framework-mcp
+```
+
 <details>
 <summary>Other MCP clients (Cursor, OpenCode)</summary>
 
