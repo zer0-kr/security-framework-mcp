@@ -17,7 +17,7 @@
 
 ---
 
-**3,439개 보안 데이터**를 단일 MCP 인터페이스로 검색 — **NIST** (SP 800-53 1,196개 컨트롤 + 53A 평가 + 53B 기준선, CSF 2.0, PF 1.0, SP 800-37 RMF, 613개 출판물, CSF↔800-53 매핑, CMVP, NICE, 용어사전, 동의어)와 **OWASP** (Top 10, API/LLM/MCP Top 10, ASVS 5.0, WSTG, MASVS, Proactive Controls, 113+ Cheat Sheets, 418+ 프로젝트) — **실시간 NVD/CVE + CISA KEV**, PDF 읽기, 컴플라이언스 매핑, STRIDE 위협 모델링, MCP 보안 평가 포함.
+**4,700+개 보안 데이터**를 단일 MCP 인터페이스로 검색 — **NIST** (SP 800-53 1,196개 컨트롤 + 53A 평가 + 53B 기준선, CSF 2.0, PF 1.0, SP 800-37 RMF, 613개 출판물, CSF↔800-53 매핑, CMVP, NICE, 용어사전, 동의어)와 **OWASP** (Top 10, API/LLM/MCP Top 10, ASVS 5.0, WSTG, MASVS, Proactive Controls, 815+ CWE, 559 CAPEC 공격 패턴, 113+ Cheat Sheets, 418+ 프로젝트) — **실시간 NVD/CVE + CISA KEV + EPSS**, PDF 읽기, 컴플라이언스 매핑, STRIDE 위협 모델링, MCP 보안 평가 포함.
 
 ## 빠른 시작
 
@@ -43,9 +43,18 @@ Claude CLI (Claude Code):
 claude mcp add security -- security-framework-mcp
 ```
 
+<details>
+<summary>기타 MCP 클라이언트 (Cursor, OpenCode)</summary>
+
+```json
+{ "security": { "command": "security-framework-mcp" } }
+```
+
+</details>
+
 첫 실행 시 로컬 데이터베이스가 자동으로 생성됩니다 (~15-20초). 이후 주 1회 자동 갱신.
 
-## 데이터 소스 (21개 로컬 + 2개 실시간)
+## 데이터 소스 (22개 로컬 + 3개 실시간)
 
 ### NIST (10개)
 
@@ -62,7 +71,7 @@ claude mcp add security -- security-framework-mcp
 | **CMVP** | 15 | FIPS 140 인증 암호 모듈 |
 | **NICE** | 43 | 사이버보안 인력 프레임워크 직무 역할 |
 
-### OWASP (11개)
+### OWASP (12개)
 
 | 소스 | 레코드 | 설명 |
 |------|--------|------|
@@ -75,8 +84,9 @@ claude mcp add security -- security-framework-mcp
 | **MCP Top 10 2025** | 10 | MCP 서버 보안 위험 |
 | **Proactive Controls 2024** | 10 | 개발자 방어 통제 |
 | **MASVS** | 23 | 모바일 앱 보안 검증 표준 |
-| **CWE 데이터베이스** | 39 | 주요 CWE + OWASP 교차 참조 |
+| **CWE 데이터베이스** | 815+ | MITRE CWE 전체 + OWASP 교차 참조 |
 | **Cheat Sheets** | 113+ | 보안 구현 가이드 (온디맨드) |
+| **CAPEC 공격 패턴** | 559 | MITRE CAPEC 공격 패턴 + CWE 교차 참조 |
 
 ### 실시간 API
 
@@ -84,8 +94,9 @@ claude mcp add security -- security-framework-mcp
 |------|------|
 | NVD CVE API 2.0 | 실시간 CVE 검색 |
 | CISA KEV | 실제 악용된 취약점 카탈로그 |
+| FIRST EPSS | 익스플로잇 예측 스코어링 시스템 |
 
-## 도구 (36개)
+## 도구 (41개)
 
 ### NIST 도구
 
@@ -125,7 +136,7 @@ claude mcp add security -- security-framework-mcp
 | 도구 | 설명 |
 |------|------|
 | `get_cwe` | CWE 조회 + OWASP 자동 교차 참조 |
-| `search_kev` | CISA KEV (실제 악용된 취약점) 카탈로그 조회 |
+| `search_kev` | CISA KEV — 벤더/제품/날짜/랜섬웨어 필터 |
 | `search_cve` | 실시간 NVD CVE 검색 |
 | `get_cve_detail` | CVE 상세 정보 (CVSS, 약점, 참조) |
 
@@ -133,9 +144,14 @@ claude mcp add security -- security-framework-mcp
 
 | 도구 | 설명 |
 |------|------|
-| `search_owasp` | 19개 소스 통합 검색 (OWASP + NIST) |
+| `lookup_compliance` | 역방향 조회: PCI-DSS/ISO 27001 요구사항 → NIST/ASVS |
+| `triage_cve` | CVE 분류: EPSS + CVSS + KEV 복합 스코어링 |
+| `map_finding` | CWE/CVE → 전체 개선 체인 |
+| `get_attack_pattern` | CAPEC 공격 패턴 + CWE 교차 참조 |
+| `search_owasp` | 22개 소스 통합 검색 (OWASP + NIST) |
 | `cross_reference` | CWE → Top 10 / ASVS / WSTG 교차 참조 |
 | `compliance_map` | ASVS → PCI-DSS 4.0 / ISO 27001:2022 / NIST 800-53 매핑 |
+| `nist_compliance_map` | SP 800-53 패밀리 → PCI-DSS 4.0 / ISO 27001:2022 매핑 |
 | `assess_stack` | 기술 스택 보안 진단 |
 | `generate_checklist` | 보안 체크리스트 생성 (프로젝트 타입 × 깊이) |
 | `assess_mcp_security` | MCP 서버 보안 평가 (MCP Top 10 기준) |
@@ -154,32 +170,54 @@ claude mcp add security -- security-framework-mcp
 
 ## 사용 예시
 
+### 취약점 관리
 ```
-> OWASP와 NIST 전체에서 "접근 제어"를 검색해줘
+> CVE-2021-44228, CVE-2023-44487 트리아지해줘 — EPSS, CVSS, KEV 상태 보여줘
 
-> NIST SP 800-53 AC-1 컨트롤을 보여줘
+> 2025년 이후 추가된 Microsoft CISA KEV 목록 보여줘
 
-> CSF 2.0의 Protect 기능 카테고리를 보여줘
+> 랜섬웨어 캠페인에 사용된 KEV만 보여줘
 
-> SP 800-53 LOW 기준선에 포함된 컨트롤 목록
+> CWE-502(역직렬화)를 노리는 공격 패턴은?
 
-> PF 1.0의 Control-P 기능을 보여줘
+> CWE-79를 Top 10 매핑, ASVS 요구사항, WSTG 테스트, 대응 가이드까지 한번에 보여줘
+```
 
-> SP 800-37 RMF의 ASSESS 단계를 설명해줘
+### 컴플라이언스 & 감사
+```
+> PCI-DSS 8.3 요구사항에 매핑되는 NIST 컨트롤과 ASVS 항목 찾아줘
 
-> CWE-79를 OWASP와 NIST 표준으로 교차 참조해줘
+> ASVS V4를 PCI-DSS 4.0, ISO 27001, NIST 800-53에 매핑해줘
 
-> ASVS V4를 PCI-DSS, ISO 27001, NIST 800-53에 매핑해줘
+> NIST SP 800-53 AC 패밀리를 PCI-DSS, ISO 27001에 매핑해줘
 
-> 내 스택(React, Node.js, PostgreSQL, REST API)의 보안을 진단해줘
+> SP 800-53 LOW 기준선에서 IA(식별 및 인증) 패밀리 컨트롤 목록
 
-> 웹 API 프로젝트용 보안 체크리스트를 생성해줘
+> SP 800-53 AC-1 컨트롤을 53A 평가 목표와 함께 보여줘
+```
 
-> 내 MCP 서버 보안을 평가해줘: shell exec, 인증 없음, 커뮤니티 플러그인
+### 위협 모델링 & 아키텍처 리뷰
+```
+> STRIDE 위협 모델을 생성해줘: 결제 API, JWT 인증, PostgreSQL, Redis 캐시
+
+> 내 스택(React, Node.js, PostgreSQL, REST API, AWS Lambda)의 보안을 진단해줘
+
+> SQL 인젝션 관련 CAPEC 공격 패턴을 찾아줘
+
+> OWASP와 NIST 전체에서 "제로 트러스트"를 검색해줘
+```
+
+### 개발 보안
+```
+> 웹 API 프로젝트용 포괄적 보안 체크리스트를 생성해줘
+
+> OWASP Authentication Cheat Sheet 보여줘
+
+> CWE-352(CSRF)를 Top 10, ASVS, WSTG 테스트 케이스와 교차 참조해줘
+
+> ASVS V3(세션 관리) 레벨 2 요구사항 보여줘
 
 > NVD에서 critical log4j CVE를 검색해줘
-
-> STRIDE 위협 모델을 생성해줘: 결제 API, JWT 인증, PostgreSQL
 ```
 
 ## 설정
@@ -189,6 +227,30 @@ claude mcp add security -- security-framework-mcp
 | `SECURITY_MCP_DATA_DIR` | `~/.security-framework-mcp` | 로컬 DB 디렉토리 |
 | `SECURITY_MCP_UPDATE_INTERVAL` | `604800` (7일) | 자동 갱신 주기 (초) |
 | `NVD_API_KEY` | _(없음)_ | NVD API 키 (선택, 속도 향상) |
+
+## 아키텍처
+
+```
+┌─────────────────────────────────┐
+│         MCP Client              │
+│  (Claude / Cursor / OpenCode)   │
+└──────────────┬──────────────────┘
+               │ stdio
+┌──────────────▼──────────────────┐
+│   security-framework-mcp        │
+│  41 tools · 4 prompts · 6 rsrc │
+├──────────────┬──────────────────┤
+│  SQLite FTS5 │  Live APIs       │
+│  (~6.2MB)    │  NVD+KEV+EPSS   │
+├──────────────┴──────────────────┤
+│  NIST Collectors (10)           │
+│  OWASP Collectors (12)          │
+└──────────────┬──────────────────┘
+               │ httpx (retry)
+┌──────────────▼──────────────────┐
+│  NIST OSCAL/CSRC · OWASP GitHub │
+└─────────────────────────────────┘
+```
 
 ## 개발
 
